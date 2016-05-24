@@ -1,0 +1,64 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace EzCalcLink
+{
+    public class OmfSection
+    {
+        public List<ContiguousMemory> Memories = new List<ContiguousMemory>();
+
+        /// <summary>
+        /// Section index
+        /// </summary>
+        public int Index;
+
+        /// <summary>
+        /// Section's specified MAU size.  Should be 1?
+        /// </summary>
+        public int MauSize;
+
+        /// <summary>
+        /// Section's specified base address.  Should be . . . zero?
+        /// </summary>
+        public int SectionBaseAddress;
+
+        public int NextAddress;
+
+
+        /// <summary>
+        /// Adds a byte to the section.
+        /// </summary>
+        /// <param name="b"></param>
+        public void SetByte(byte b)
+        {
+            SetByte(NextAddress, b);
+            NextAddress++;
+        }
+
+
+        /// <summary>
+        /// Adds a byte to the section at a given address.
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="b"></param>
+        public void SetByte(int address, byte b)
+        {
+            NextAddress = address;
+            ContiguousMemory m = Memories.Where(x => x.CanAdd(address)).FirstOrDefault();
+            if (m == null)
+                Memories.Add(new ContiguousMemory(address, b));
+            else
+            {
+                m[address] = b;
+                ContiguousMemory n = Memories.Where(x => x != m && m.CanMergeWith(x)).FirstOrDefault();
+                if (n == null)
+                    return;
+                m.MergeWith(n);
+                Memories.Remove(n);
+            }
+        }
+    }
+}
