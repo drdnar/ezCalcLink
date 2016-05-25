@@ -10,6 +10,8 @@ namespace EzCalcLink
     {
         static void Main(string[] args)
         {
+            Omf695 obj = Omf695.LoadObjectFile("CHECKERS.lod");
+            Console.ReadKey();
         }
     }
 }

@@ -42,6 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ContiguousMemory.cs" />
+    <Compile Include="DebugLogger.cs" />
     <Compile Include="Omf695.cs" />
     <Compile Include="OmfSection.cs" />
     <Compile Include="Program.cs" />

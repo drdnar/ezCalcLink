@@ -120,97 +120,97 @@ namespace EzCalcLink
         /// </summary>
         protected void processFile()
         {
-            while (true)
-                if (!parseField(1))
-                    return;
+            DebugLogger.Indent();
+            while (parseHeaderField())
+                ;
+            DebugLogger.Unindent();
         }
 
-        protected bool parseField(int nesting)
+        protected bool parseHeaderField()
         {
-            Indent(nesting); Log("Parsing field " + file[index].ToString("X2") + ", ");
-
+            DebugLogger.Log("Parsing field {0}, ", file[index].ToString("X2"));
+            
             bool isEscapedValue = false;
 
             switch (file[index++])
             {
                 case 0xE0: // Module Beginning
-                    Indent(nesting); LogLine("Module Beginning (MB)");
+                    DebugLogger.LogLine("Module Beginning (MB)");
                     Processor = ReadString();
-                    Indent(nesting); Log(" Processor = "); LogLine(Processor);
+                    DebugLogger.LogLine(" Processor = {0}", Processor);
                     ModuleName = ReadString();
-                    Indent(nesting); Log(" Module name = "); LogLine(ModuleName);
+                    DebugLogger.LogLine(" Module name = {0}", ModuleName);
                     break;
                 case 0xEC: // Address Descriptor
-                    Indent(nesting); LogLine("Address Descriptor (AD)");
+                    DebugLogger.LogLine("Address Descriptor (AD)");
                     BitsPerMau = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Bits per MAU = "); LogLine(BitsPerMau.ToString());
+                    DebugLogger.Log(" Bits per MAU = {0}", BitsPerMau);
                     MausPerAddress = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" MAUs per address = "); LogLine(MausPerAddress.ToString());
+                    DebugLogger.Log(" MAUs per address = {0}", MausPerAddress);
                     byte b = file[index];
                     if (b == 0xCC || b == 0xCD)
                         index++;
                     AddressLittleEndian = b == 0xCC;
-                    Indent(nesting);
                     if (AddressLittleEndian)
-                        LogLine(" Addresses are little-endian");
+                        DebugLogger.LogLine(" Addresses are little-endian");
                     else
-                        LogLine(" Addresses are big-endian");
+                        DebugLogger.LogLine(" Addresses are big-endian");
                     break;
                 case 0xE2: // Extended code
-                    Indent(nesting); Log("extended code, " + file[index].ToString("X2") + ", ");
+                    DebugLogger.Log("extended code, {0:X2}, ", file[index]);
                     switch (file[index++])
                     {
                         case 0xD7:
-                            Indent(nesting); Log("extended code, " + file[index].ToString("X2") + ", ");
+                            DebugLogger.Log("extended code, {0:X2}, ", file[index]);
                             switch (file[index++])
                             {
                                 case 0:
-                                    Indent(nesting); LogLine("Assign Pointer to AD Extension Part (ASW0)");
+                                    DebugLogger.LogLine("Assign Pointer to AD Extension Part (ASW0)");
                                     Parts[0] = PtrToAsw0 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW0 offset = " + PtrToAsw0.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW0 offset = {0:X8}", PtrToAsw0);
                                     break;
                                 case 1:
-                                    Indent(nesting); LogLine("Assign Pointer to Environment Part (ASW1)");
+                                    DebugLogger.LogLine("Assign Pointer to Environment Part (ASW1)");
                                     Parts[1] = PtrToAsw1 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW1 offset = " + PtrToAsw1.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW1 offset = {0:X8}", PtrToAsw1);
                                     break;
                                 case 2:
-                                    Indent(nesting); LogLine("Assign Pointer to Section Part (ASW2)");
+                                    DebugLogger.LogLine("Assign Pointer to Section Part (ASW2)");
                                     Parts[2] = PtrToAsw2 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW2 offset = " + PtrToAsw2.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW2 offset = {0:X8}", PtrToAsw2);
                                     break;
                                 case 3:
-                                    Indent(nesting); LogLine("Assign Pointer to External Part (ASW3)");
+                                    DebugLogger.LogLine("Assign Pointer to External Part (ASW3)");
                                     Parts[3] = PtrToAsw3 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW3 offset = " + PtrToAsw3.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW3 offset = {0:X8}", PtrToAsw3);
                                     break;
                                 case 4:
-                                    Indent(nesting); LogLine("Assign Pointer to Debug Information Part (ASW4)");
+                                    DebugLogger.LogLine("Assign Pointer to Debug Information Part (ASW4)");
                                     Parts[4] = PtrToAsw4 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW4 offset = " + PtrToAsw4.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW4 offset = {0:X8}", PtrToAsw4);
                                     break;
                                 case 5:
-                                    Indent(nesting); LogLine("Assign Pointer to Data Part (ASW5)");
+                                    DebugLogger.LogLine("Assign Pointer to Data Part (ASW5)");
                                     Parts[5] = PtrToAsw5 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW5 offset = " + PtrToAsw5.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW5 offset = {0:X8}", PtrToAsw5);
                                     break;
                                 case 6:
-                                    Indent(nesting); LogLine("Assign Pointer to Trailer Part (ASW6)");
+                                    DebugLogger.LogLine("Assign Pointer to Trailer Part (ASW6)");
                                     Parts[6] = PtrToAsw6 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW6 offset = " + PtrToAsw6.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW6 offset = {0:X8}", PtrToAsw6);
                                     break;
                                 case 7:
-                                    Indent(nesting); LogLine("Assign Pointer to Module End Part (ASW7)");
+                                    DebugLogger.LogLine("Assign Pointer to Module End Part (ASW7)");
                                     Parts[7] = PtrToAsw7 = ReadNumber(out isEscapedValue);
-                                    Indent(nesting); LogLine(" ASW7 offset = " + PtrToAsw7.ToString("X8"));
+                                    DebugLogger.LogLine(" ASW7 offset = {0:X8}", PtrToAsw7);
                                     break;
                                 default:
-                                    Indent(nesting); LogLine("Unknown field.");
+                                    DebugLogger.LogLine("Unknown field.");
                                     return false;
                             }
                             break;
                         default:
-                            Indent(nesting); LogLine("Unknown field.");
+                            DebugLogger.LogLine("Unknown field.");
                             return false;
                     }
                     break;
@@ -219,66 +219,74 @@ namespace EzCalcLink
                     switch (WhichPart(index))
                     {
                         case 0:
-                            Indent(nesting); LogLine("Start of ASW0");
-                            return parseP0(nesting + 1);
+                            DebugLogger.LogLine("Start of ASW0");
+                            return parseP0(1);
                         case 1:
-                            Indent(nesting); LogLine("Start of ASW1");
-                            return parseP1(nesting + 1);
+                            DebugLogger.LogLine("Start of ASW1");
+                            return parseP1(1);
                         default:
-                            Indent(nesting); LogLine("Field F0 unexpected.");
+                            DebugLogger.LogLine("Field F0 unexpected.");
                             return false;
                     }
                 case 0xE6:
                     index--;
                     //if (WhichPart(index) == 2)
                     //{
-                        Indent(nesting); LogLine("Start of ASW2");
-                        return parseP2(nesting + 1);
+                    DebugLogger.LogLine("Start of ASW2");
+                        return parseP2(1);
                     //}
                     //Indent(nesting); LogLine("Field E6 unexpected.");
                     //break;
                 case 0xE5:
-                    index--;
-                    //if (WhichPart(index) == 5)
-                    //{
-                    LogLine("");
-                    Log("IndexA: "); LogLine(index.ToString("X4"));
-                        Indent(nesting); LogLine("Start of ASW5");
-                        bool q = parseP5(nesting + 1);
-                        Indent(nesting); LogLine("SECTIONS:");
-                        Log("IndexB: "); LogLine(index.ToString("X4"));
+                    if (WhichPart(index) == 5)
+                    {
+                        index--;
+                        DebugLogger.LogLine("");
+                        //DebugLogger.LogLine("IndexA: {0}", index);
+                    DebugLogger.LogLine("Start of ASW5");
+                        bool q = parseP5(1);
+                        DebugLogger.LogLine("SECTIONS:");
+                        //DebugLogger.LogLine("IndexB: {0:X4}", index);
+                        DebugLogger.Indent();
                         foreach (OmfSection s in Sections)
                         {
-                            Indent(nesting + 1); Log("Section Index: "); LogLine(s.Index.ToString());
+                            DebugLogger.LogLine("Section Index: {0}", s.Index);
+                            DebugLogger.Indent();
                             foreach (ContiguousMemory m in s.Memories)
                             {
-                                Indent(nesting + 2); Log("Memory record: "); Log(m.StartAddress.ToString("X6"));
-                                Log(", size: "); LogLine(m.Size.ToString("X4"));
+                                DebugLogger.LogLine("Memory record: {0:X6}, size: {1:X4}", m.StartAddress, m.Size);
                                 /*Indent(nesting + 3);
                                 for (int i = m.StartAddress; i < m.EndAddress; i++)
                                     Log(m[i].ToString("X2"));
                                 LogLine("");*/
                             }
+                            DebugLogger.Unindent();
                         }
-                        Log("IndexC: "); LogLine(index.ToString("X4"));
-                    Console.ReadKey();
+                        DebugLogger.Unindent();
+                        //DebugLogger.LogLine("IndexC: {0:X4}", index);
+                        //Console.ReadKey();
                         return q;
-                    /*}
-                    Indent(nesting); LogLine("Field E5 unexpected.");
+                    }
+                    else
+                    {
+                        currentSection = ReadNumber(out isEscapedValue);
+                        break;
+                    }
+                    /*Indent(nesting); LogLine("Field E5 unexpected.");
                     return false;*/
                 case 0xE8:
                     index--;
-                    Log("External part (ASW3)");
-                    return parseP3(nesting + 1);
+                    DebugLogger.Log("External part (ASW3)");
+                    return parseP3(1);
                 case 0xE1:
-                    LogLine("Module end (ME)! Let's go home!");
+                    DebugLogger.LogLine("Module end (ME)! Let's go home!");
                     return false;
                 default:
-                    Indent(nesting); LogLine("Unknown field.");
+                    DebugLogger.LogLine("Unknown field.");
                     for (int i = 0; i < 32; i++ )
                     {
                         if (index + i < file.Length)
-                            Log(file[index + i].ToString("X2"));
+                            DebugLogger.Log("{0:X2}", file[index + i]);
                     }
                     return false;
             }
@@ -294,143 +302,143 @@ namespace EzCalcLink
             while (true)
                 if (NextRecordIdIs(0xE8))
                 {
-                    Indent(nesting); LogLine("Public (external) symbol (NI)");
-                    Indent(nesting); Log(" Public name index record: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Symbol name: "); LogLine(ReadString());
+                    DebugLogger.LogLine("Public (external) symbol (NI)");
+                    DebugLogger.LogLine(" Public name index record: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Symbol name: {0}", ReadString());
                 }
                 else if (NextRecordIdIs(0xF1C9))
                 {
-                    Indent(nesting); LogLine("Variable attribute (ATI)");
+                    DebugLogger.LogLine("Variable attribute (ATI)");
                     n1 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Symbol name index: "); LogLine(n1.ToString());
+                    DebugLogger.LogLine(" Symbol name index: {0}", n1);
                     n2 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Symbol type index: "); LogLine(n2.ToString());
-                    Indent(nesting + 1);
+                    DebugLogger.LogLine(" Symbol type index: {0}", n2);
+                    DebugLogger.Indent();
                     switch (n2)
                     {
                         case 0:
-                            LogLine("Unspecified.");
+                            DebugLogger.LogLine("Unspecified.");
                             break;
                         case 3:
-                            LogLine("8-bit data byte");
+                            DebugLogger.LogLine("8-bit data byte");
                             break;
                         case 5:
-                            LogLine("16-bit short data word");
+                            DebugLogger.LogLine("16-bit short data word");
                             break;
                         case 7:
-                            LogLine("32-bit long data word");
+                            DebugLogger.LogLine("32-bit long data word");
                             break;
                         case 10:
-                            LogLine("32-bit floating point");
+                            DebugLogger.LogLine("32-bit floating point");
                             break;
                         case 11:
-                            LogLine("64-bit floating point");
+                            DebugLogger.LogLine("64-bit floating point");
                             break;
                         case 12:
-                            LogLine("10 or 12 byte floating point. Guess which!");
+                            DebugLogger.LogLine("10 or 12 byte floating point. Guess which!");
                             break;
                         case 15:
-                            LogLine("Instruction address");
+                            DebugLogger.LogLine("Instruction address");
                             break;
                         default:
-                            LogLine("I DON'T KNOW, PLEASE CHECK");
+                            DebugLogger.LogLine("I DON'T KNOW, PLEASE CHECK");
                             break;
                     }
+                    DebugLogger.Unindent();
                     n3 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Attribute definition: "); Log(n3.ToString());
+                    DebugLogger.Log(" Attribute definition: {0}", n3);
                     switch (n3)
                     {
                         case 8:
-                            Log(" Global compiler symbol.");
+                            DebugLogger.Log(" Global compiler symbol.");
                             break;
                         case 16:
-                            Log(" Constant. ");
+                            DebugLogger.Log(" Constant. ");
                             x1 = ReadNumber(out isEscapedValue);
                             switch (x1)
                             {
                                 case 0:
-                                    Log("Unknown class.");
+                                    DebugLogger.LogLine("Unknown class.");
                                     break;
                                 case 1:
-                                    Log("EQU constant");
+                                    DebugLogger.LogLine("EQU constant");
                                     break;
                                 case 2:
-                                    Log("SET constant");
+                                    DebugLogger.LogLine("SET constant");
                                     break;
                                 case 3:
-                                    Log("Pascal CONST constant");
+                                    DebugLogger.LogLine("Pascal CONST constant");
                                     break;
                                 case 4:
-                                    Log("C #define constant");
+                                    DebugLogger.LogLine("C #define constant");
                                     break;
                                 default:
-                                    Log(x1.ToString());
+                                    DebugLogger.LogLine("{0}", x1);
                                     break;
                             }
-                            LogLine("");
                             if (file[index] > 0x84)
                                 break; // . . . that really shouldn't be legal syntax
-                            LogLine("I don't know. I give up. This is impossible to parse unambiguously.");
+                            DebugLogger.LogLine("I don't know. I give up. This is impossible to parse unambiguously.");
                             return false;
                         case 19:
-                            Log(" Static symbol generated by assembler.");
+                            DebugLogger.Log(" Static symbol generated by assembler.");
                             break;
                     }
-                    Indent(nesting); Log(" Element count: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                    DebugLogger.LogLine(" Element count: {0}", ReadNumber(out isEscapedValue));
                 }
                 else if (NextRecordIdIs(0xE2C9))
                 {
-                    Indent(nesting); LogLine("Variable values (ASI)");
-                    Indent(nesting); Log(" Symbol index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Symbol value: "); LogLine(ReadNumber(out isEscapedValue).ToString("X6"));
+                    DebugLogger.LogLine("Variable values (ASI)");
+                    DebugLogger.LogLine(" Symbol index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Symbol value: {0:X6}", ReadNumber(out isEscapedValue));
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
-                    Indent(nesting); LogLine("Variable values (ASR), should not use");
+                    DebugLogger.LogLine("Variable values (ASR), should not use");
                     return false;
                 }
                 else if (NextRecordIdIs(0xE9))
                 {
-                    Indent(nesting); LogLine("External reference name (NX)");
-                    Indent(nesting); Log(" External reference index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Symbol name: "); LogLine(ReadString());
+                    DebugLogger.LogLine("External reference name (NX)");
+                    DebugLogger.LogLine(" External reference index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Symbol name: {0}", ReadString());
                 }
                 else if (NextRecordIdIs(0xF1D8))
                 {
-                    Indent(nesting); LogLine("External reference relocation information (ATX)");
+                    DebugLogger.LogLine("External reference relocation information (ATX)");
                     n1 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" External reference index: "); LogLine(n1.ToString());
+                    DebugLogger.LogLine(" External reference index: {0}", n1);
                     if (file[index] <= 0x84)
                     {
-                        Indent(nesting); Log(" Type index: ");
+                        DebugLogger.Log(" Type index: ");
                         if (file[index] == 0x80)
                         {
                             index++;
-                            LogLine("Unspecified");
+                            DebugLogger.LogLine("Unspecified");
                         }
                         else
-                            LogLine(ReadNumber(out isEscapedValue).ToString());
+                            DebugLogger.LogLine("{0}", ReadNumber(out isEscapedValue));
                         if (file[index] <= 0x84)
                         {
-                            
-                            Indent(nesting); Log(" Section index: ");
+
+                            DebugLogger.Log(" Section index: ");
                             if (file[index] == 0x80)
                             {
                                 index++;
-                                LogLine("Unspecified");
+                                DebugLogger.LogLine("Unspecified");
                             }
                             else
-                                LogLine(ReadNumber(out isEscapedValue).ToString());
+                                DebugLogger.LogLine("{0}", ReadNumber(out isEscapedValue));
                             if (file[index] <= 0x84)
                             {
-                                Indent(nesting); Log(" Short external flag: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                                DebugLogger.LogLine(" Short external flag: {0}", ReadNumber(out isEscapedValue));
                             }
                         }
                     }
                 }
                 else if (NextRecordIdIs(0xF4))
                 {
-                    Indent(nesting); LogLine("Weak external reference (WX)");
+                    DebugLogger.LogLine("Weak external reference (WX)");
                 }
                 else
                     return true;
@@ -445,154 +453,154 @@ namespace EzCalcLink
             //while (true)
                 if (NextRecordIdIs(0xE6))
                 {
-                    Indent(nesting); LogLine("Section type (ST): ");
+                    DebugLogger.LogLine("Section type (ST): ");
                     currentSection = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Index: "); LogLine(currentSection.ToString());
-                    Indent(nesting); Log(" Type: ");
+                    DebugLogger.LogLine(" Index: {0}", currentSection);
+                    DebugLogger.Log(" Type: ");
                     if (NextRecordIdIs(0xC1D3D0))
                     {
                         // Normal value?
-                        LogLine("Absolute code (ASP)");
+                        DebugLogger.LogLine("Absolute code (ASP)");
                     }
                     else if (NextRecordIdIs(0xC1D3D2))
                     {
-                        LogLine("Absolute ROM data (ASR)");
+                        DebugLogger.LogLine("Absolute ROM data (ASR)");
                     }
                     else if (NextRecordIdIs(0xC1D3C4))
                     {
-                        LogLine("Absolute data (ASD)");
+                        DebugLogger.LogLine("Absolute data (ASD)");
                     }
                     else if (NextRecordIdIs(0xC3D0))
                     {
-                        LogLine("Normal code (CP)");
+                        DebugLogger.LogLine("Normal code (CP)");
                     }
                     else if (NextRecordIdIs(0xC3D2))
                     {
-                        LogLine("Normal ROM data (CR)");
+                        DebugLogger.LogLine("Normal ROM data (CR)");
                     }
                     else if (NextRecordIdIs(0xC3C4))
                     {
-                        LogLine("Normal data (CD)");
+                        DebugLogger.LogLine("Normal data (CD)");
                     }
                     else if (NextRecordIdIs(0xC5C1D0))
                     {
-                        LogLine("Common absolute code (EAP)");
+                        DebugLogger.LogLine("Common absolute code (EAP)");
                     }
                     else if (NextRecordIdIs(0xC5C1D2))
                     {
-                        LogLine("Common absolute ROM data (EAR)");
+                        DebugLogger.LogLine("Common absolute ROM data (EAR)");
                     }
                     else if (NextRecordIdIs(0xC5C1C4))
                     {
-                        LogLine("Common absolute data (EAD)");
+                        DebugLogger.LogLine("Common absolute data (EAD)");
                     }
                     else if (NextRecordIdIs(0xC5DA))
                     {
-                        LogLine("Something about short common with error checking.");
+                        DebugLogger.LogLine("Something about short common with error checking.");
                         return false;
                     }
                     else if (NextRecordIdIs(0xCDC1D0))
                     {
-                        LogLine("Common absolute code without size constraint thingy (MAP)");
+                        DebugLogger.LogLine("Common absolute code without size constraint thingy (MAP)");
                     }
                     else if (NextRecordIdIs(0xCDC1D2))
                     {
-                        LogLine("Common absolute ROM data without size constraint thingy (MAR)");
+                        DebugLogger.LogLine("Common absolute ROM data without size constraint thingy (MAR)");
                     }
                     else if (NextRecordIdIs(0xCDC1C4))
                     {
-                        LogLine("Common absolute data without size constraint thingy (MAD)");
+                        DebugLogger.LogLine("Common absolute data without size constraint thingy (MAD)");
                     }
                     else if (NextRecordIdIs(0xDAC3D0))
                     {
-                        LogLine("Short code (ZCP)");
+                        DebugLogger.LogLine("Short code (ZCP)");
                     }
                     else if (NextRecordIdIs(0xDAC3D2))
                     {
-                        LogLine("Short ROM data (ZCR)");
+                        DebugLogger.LogLine("Short ROM data (ZCR)");
                     }
                     else if (NextRecordIdIs(0xDAC3C4))
                     {
-                        LogLine("Short data (ZCD)");
+                        DebugLogger.LogLine("Short data (ZCD)");
                     }
                     else if (NextRecordIdIs(0xDACD))
                     {
-                        LogLine("Short common relocatable sections thingies?");
+                        DebugLogger.LogLine("Short common relocatable sections thingies?");
                         return false;
                     }
-                    Indent(nesting); Log(" Section name: "); LogLine(ReadString());
-                    Indent(nesting); Log(" Parent index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Sibling index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Context index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                    DebugLogger.LogLine(" Section name: {0}", ReadString());
+                    DebugLogger.LogLine(" Parent index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Sibling index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Context index: {0}", ReadNumber(out isEscapedValue));
                 }
                 else if (NextRecordIdIs(0xE7))
                 {
-                    Indent(nesting); LogLine("Section alignment (SA): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                    DebugLogger.LogLine("Section alignment (SA): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
                     // TODO: Figure out how to handle optional arguments?
-                    Indent(nesting); Log(" Boundary alignment divisor: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Page size: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Log("Parser not programmed to use this field's information.  Fixme!");
+                    DebugLogger.LogLine(" Boundary alignment divisor: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
                     return false;
                 }
                 else if (NextRecordIdIs(0xE2D3))
                 {
-                    Indent(nesting); LogLine("Section size (ASS): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Section size: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Log("Parser not programmed to use this field's information.  Fixme!");
+                    DebugLogger.LogLine("Section size (ASS): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Section size: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
                     return false;
                 }
                 else if (NextRecordIdIs(0xE2CC))
                 {
-                    Indent(nesting); LogLine("Section base address (ASL): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Section base address: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                    DebugLogger.LogLine("Section base address (ASL): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Section base address: {0}", ReadNumber(out isEscapedValue));
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
-                    Indent(nesting); LogLine("Variable values or section offset? (ASR): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Section offset: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Log("Parser not programmed to use this field's information.  Fixme!");
+                    DebugLogger.LogLine("Variable values or section offset? (ASR): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Section offset: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
                     return false;
                 }
                 else if (NextRecordIdIs(0xFB))
                 {
-                    Indent(nesting); LogLine("Define context (NC): ");
-                    Indent(nesting); Log(" Context index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Context name: "); LogLine(ReadString());
-                    Log("Parser not programmed to use this field's information.  Fixme!");
+                    DebugLogger.LogLine("Define context (NC): ");
+                    DebugLogger.LogLine(" Context index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Context name: {0}", ReadString());
+                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
                     return false;
                 }
                 else if (NextRecordIdIs(0xE2C1))
                 {
-                    Indent(nesting); LogLine("Physical region size (ASA): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Region size: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Log("Parser not programmed to use this field's information.  Fixme!");
+                    DebugLogger.LogLine("Physical region size (ASA): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Region size: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
                     return false;
                 }
                 else if (NextRecordIdIs(0xE2C2))
                 {
-                    Indent(nesting); LogLine("Physical region base address (ASB): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" Address: "); LogLine(ReadNumber(out isEscapedValue).ToString("X6"));
-                    Log("Parser not programmed to use this field's information.  Fixme!");
+                    DebugLogger.LogLine("Physical region base address (ASB): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Address: {0:X6}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
                     return false;
                 }
                 else if (NextRecordIdIs(0xE2C6))
                 {
-                    Indent(nesting); LogLine("MAU size (ASF): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" MAU size: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                    DebugLogger.LogLine("MAU size (ASF): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" MAU size: {0}", ReadNumber(out isEscapedValue));
                 }
                 else if (NextRecordIdIs(0xE2CD))
                 {
-                    Indent(nesting); LogLine("M-Value (ASM): ");
-                    Indent(nesting); Log(" Section index: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Indent(nesting); Log(" M-Value: "); LogLine(ReadNumber(out isEscapedValue).ToString());
-                    Log("Parser not programmed to use this field's information.  Fixme!");
+                    DebugLogger.LogLine("M-Value (ASM): ");
+                    DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" M-Value: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
                     return false;
                 }
                 else if (NextRecordIdIs(0xE5)) // Apparently, this is legal?
@@ -612,7 +620,8 @@ namespace EzCalcLink
         {
             bool isEscapedValue;
             for (int i = 0; i < 16; i++)
-                Log(file[index + i].ToString("X2"));
+                DebugLogger.Log(file[index + i].ToString("X2"));
+            DebugLogger.LogLine("");
             OmfSection s;
             while (WhichPart(index) == 5)
                 if (NextRecordIdIs(0xE5))
@@ -636,7 +645,7 @@ namespace EzCalcLink
                     s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
                     if (s == null)
                     {
-                        LogLine("ERROR: Attempt to add data to undefined section!");
+                        DebugLogger.LogLine("ERROR: Attempt to add data to undefined section!");
                         return false;
                     }
                     int n = ReadNumber(out isEscapedValue);
@@ -651,27 +660,27 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE3))
                 {
-                    Indent(nesting); Log("Initialize Relocation Base (IR)");
+                    DebugLogger.LogLine("Initialize Relocation Base (IR)");
                 }
                 else if (NextRecordIdIs(0xF7))
                 {
-                    Indent(nesting); Log("Repeat Data (RE)");
+                    DebugLogger.LogLine("Repeat Data (RE)");
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
-                    Indent(nesting); Log("Variables Values (ASR)"); // "Not implemented"
+                    DebugLogger.LogLine("Variables Values (ASR)"); // "Not implemented"
                 }
                 else if (NextRecordIdIs(0xE2D7))
                 {
-                    Indent(nesting); Log("Variables Values (ASW)");
+                    DebugLogger.LogLine("Variables Values (ASW)");
                 }
                 else if (NextRecordIdIs(0xE4))
                 {
-                    Indent(nesting); Log("Load With Relocation (LR)");
+                    DebugLogger.LogLine("Load With Relocation (LR)");
                 }
                 else if (NextRecordIdIs(0xFA))
                 {
-                    Indent(nesting); Log("Load With Translation (LT)");
+                    DebugLogger.LogLine("Load With Translation (LT)");
                 }
                 else
                     return false;
@@ -687,119 +696,119 @@ namespace EzCalcLink
             while (WhichPart(index) == 1)
                 if (NextRecordIdIs(0xF0))
                 {
-                    Indent(nesting); LogLine("Record F0, Variable Attributes (NN)");
+                    DebugLogger.LogLine("Record F0, Variable Attributes (NN)");
                     n3 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Version: "); LogLine(n3.ToString());
+                    DebugLogger.LogLine(" Version: {0}", n3);
                     EnvironmentPart.NnRecords.Add(n3, ReadString());
-                    Indent(nesting); Log(" ID: "); LogLine(EnvironmentPart.NnRecords[n3]);
+                    DebugLogger.LogLine(" ID: {0}", EnvironmentPart.NnRecords[n3]);
                 }
                 else if (NextRecordIdIs(0xF1CE))
                 {
-                    Indent(nesting); LogLine("Record F1CE, Variable Attributes (ATN)");
+                    DebugLogger.LogLine("Record F1CE, Variable Attributes (ATN)");
                     n3 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Symbol name index: "); LogLine(n3.ToString());
+                    DebugLogger.LogLine(" Symbol name index: {0}", n3);
                     if (!EnvironmentPart.NnRecords.ContainsKey(n3))
                     {
-                        Indent(nesting); LogLine("ERROR: No matching NN record!");
+                        DebugLogger.LogLine("ERROR: No matching NN record!");
                         return false;
                     }
-                    Indent(nesting); Log(" Should be zero: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                    DebugLogger.LogLine(" Should be zero: {0}", ReadNumber(out isEscapedValue));
                     n3 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Attribute definition: "); Log(n3.ToString()); Log(", ");
+                    DebugLogger.LogLine(" Attribute definition: {0}, ", n3);
                     switch (n3)
                     {
                         case 50:
-                            LogLine("Creation date and time");
+                            DebugLogger.Log("Creation date and time: ");
                             EnvironmentPart.DateTime = new DateTime(ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
                                  ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
                                  ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue));
-                            Indent(nesting); Log("  "); LogLine(EnvironmentPart.DateTime.ToString());
+                            DebugLogger.LogLine(EnvironmentPart.DateTime.ToString());
                             break;
                         case 51:
-                            LogLine("Creation command line");
+                            DebugLogger.Log("Creation command line: ");
                             EnvironmentPart.CommandLine = ReadString();
-                            Indent(nesting); Log("  "); LogLine(EnvironmentPart.CommandLine);
+                            DebugLogger.LogLine(EnvironmentPart.CommandLine);
                             break;
                         case 52:
-                            LogLine("Execution status");
+                            DebugLogger.LogLine("Execution status: ");
                             n3 = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  "); Log(n3.ToString());
+                            DebugLogger.Log(n3);
                             switch (n3)
                             {
                                 case 0:
-                                    LogLine(": Success");
+                                    DebugLogger.LogLine(": Success");
                                     break;
                                 case 1:
-                                    LogLine(": Warning");
+                                    DebugLogger.LogLine(": Warning");
                                     break;
                                 case 2:
-                                    LogLine(": Error(s)");
+                                    DebugLogger.LogLine(": Error(s)");
                                     break;
                                 case 3:
-                                    LogLine(": Fatal error(s)");
+                                    DebugLogger.LogLine(": Fatal error(s)");
                                     break;
                                 default:
-                                    LogLine(": Unknown");
+                                    DebugLogger.LogLine(": Unknown");
                                     return false;
                             }
                             EnvironmentPart.ExecutionStatus = (ExecutionStatus)n3;
                             break;
                         case 53:
-                            LogLine("Host environment");
+                            DebugLogger.LogLine("Host environment: ");
                             n3 = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  "); Log(n3.ToString());
+                            DebugLogger.Log(n3.ToString());
                             switch (n3)
                             {
                                 case 0:
-                                    LogLine(": Other");
+                                    DebugLogger.LogLine(": Other");
                                     break;
                                 case 1:
-                                    LogLine(": VMS");
+                                    DebugLogger.LogLine(": VMS");
                                     break;
                                 case 2:
-                                    LogLine(": MS-DOS");
+                                    DebugLogger.LogLine(": MS-DOS");
                                     break;
                                 case 3:
-                                    LogLine(": UNIX");
+                                    DebugLogger.LogLine(": UNIX");
                                     break;
                                 case 4:
-                                    LogLine(": HP-UX");
+                                    DebugLogger.LogLine(": HP-UX");
                                     break;
                                 default:
-                                    LogLine(": Unknown");
+                                    DebugLogger.LogLine(": Unknown");
                                     return false;
                             }
                             EnvironmentPart.HostEnvironment = (HostEnvironment)n3;
                             break;
                         case 54:
-                            LogLine("Tool version information");
+                            DebugLogger.LogLine("Tool version information");
                             EnvironmentPart.ToolNumber = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  Tool number: "); Log(EnvironmentPart.ToolNumber.ToString());
+                            DebugLogger.LogLine("  Tool number: {0}", EnvironmentPart.ToolNumber);
                             EnvironmentPart.ToolVersion = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  Tool "); Log(EnvironmentPart.ToolVersion.ToString());
+                            DebugLogger.LogLine("  Tool {0}", EnvironmentPart.ToolVersion);
                             EnvironmentPart.ToolRevision = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  Tool "); Log(EnvironmentPart.ToolRevision.ToString());
+                            DebugLogger.LogLine("  Tool {0}", EnvironmentPart.ToolRevision);
                             if (file[index] >= 0xC1 && file[index] <= 0xDA)
                             {
                                 EnvironmentPart.ToolLetter = (char)(file[index++] - 0xC1 + (int)'A');
-                                Indent(nesting); Log("  Tool letter: "); Log(EnvironmentPart.ToolLetter.ToString());
+                                DebugLogger.LogLine("  Tool letter: {0}", EnvironmentPart.ToolLetter);
                             }
                             break;
                         case 55:
-                            LogLine("Comments");
+                            DebugLogger.Log("Comments: ");
                             EnvironmentPart.Comments = ReadString();
-                            Indent(nesting); Log("  "); Log(EnvironmentPart.Comments);
+                            DebugLogger.LogLine(EnvironmentPart.Comments);
                             break;
                         case 56:
-                            LogLine("I dunno.");
+                            DebugLogger.LogLine("I dunno: ");
                             EnvironmentPart.IDontKnow = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  "); Log(EnvironmentPart.IDontKnow.ToString());
-                            LogLine(": Total mystery.");
+                            DebugLogger.Log(EnvironmentPart.IDontKnow);
+                            DebugLogger.LogLine(": Total mystery.");
                             break;
                         default:
-                            LogLine("Unknown field.");
+                            DebugLogger.LogLine("Unknown field.");
                             for (int i = 0; i < 32; i++)
-                                Log(file[index++].ToString("X2") + " ");
+                                DebugLogger.Log("{0:X2}", file[index++]);
                             
                             return false;
                     }
@@ -807,14 +816,14 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE2CE))
                 {
-                    Indent(nesting); LogLine("Record E2CE.  Wonder what it means.");
+                    DebugLogger.LogLine("Record E2CE.  Wonder what it means.");
                     for (int i = 0; i < 32; i++)
-                        Log(file[index++].ToString("X2") + " ");
+                        DebugLogger.Log("{0:X2}", file[index++]);
                     return false;
                 }
                 else
                 {
-                    LogLine("Unknown field.");
+                    DebugLogger.LogLine("Unknown field.");
                     return false;
                 }
 
@@ -830,108 +839,117 @@ namespace EzCalcLink
             while (WhichPart(index) == 0)
                 if (NextRecordIdIs(0xF0))
                 {
-                    Indent(nesting); LogLine("Record F0, Variable Attributes (NN)");
+                    DebugLogger.LogLine("Record F0, Variable Attributes (NN)");
                     n3 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Version: "); LogLine(n3.ToString());
+                    DebugLogger.LogLine(" Version: {0}", n3);
                     AdExtensionPart.NnRecords.Add(n3, ReadString());
-                    Indent(nesting); Log(" ID: "); LogLine(AdExtensionPart.NnRecords[n3]);
+                    DebugLogger.LogLine(" ID: {0}", AdExtensionPart.NnRecords[n3]);
                 }
                 else if (NextRecordIdIs(0xF1CE))
                 {
-                    Indent(nesting); LogLine("Record F1CE, Variable Attributes (ATN)");
+                    DebugLogger.LogLine("Record F1CE, Variable Attributes (ATN)");
                     n3 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Symbol name index: "); LogLine(n3.ToString());
+                    DebugLogger.LogLine(" Symbol name index: {0}", n3);
                     if (!AdExtensionPart.NnRecords.ContainsKey(n3))
                     {
-                        Indent(nesting); LogLine("ERROR: No matching NN record!");
+                        DebugLogger.LogLine("ERROR: No matching NN record!");
                         return false;
                     }
-                    Indent(nesting); Log(" Should be zero: "); LogLine(ReadNumber(out isEscapedValue).ToString());
+                    DebugLogger.Log(" Should be zero: {0}", ReadNumber(out isEscapedValue));
                     n3 = ReadNumber(out isEscapedValue);
-                    Indent(nesting); Log(" Attribute definition: "); Log(n3.ToString()); Log(", ");
+                    DebugLogger.Log(" Attribute definition: {0}, ", n3);
                     switch (n3)
                     {
                         case 37:
-                            LogLine(" Object format version");
+                            DebugLogger.LogLine(" Object format version");
                             AdExtensionPart.VersionNumber = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  Version: "); LogLine(AdExtensionPart.VersionNumber.ToString());
+                            DebugLogger.LogLine("  Version: {0}", AdExtensionPart.VersionNumber);
                             AdExtensionPart.RevisionNumber = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  Revision: "); LogLine(AdExtensionPart.RevisionNumber.ToString());
+                            DebugLogger.LogLine("  Revision: {0}", AdExtensionPart.RevisionNumber);
                             break;
                         case 38:
-                            LogLine(" Object format type");
+                            DebugLogger.LogLine(" Object format type");
                             n3 = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  "); Log(n3.ToString());
+                            DebugLogger.Indent();
+                            DebugLogger.Log(n3);
                             switch (n3)
                             {
                                 case 1:
-                                    LogLine(": Absolute");
+                                    DebugLogger.LogLine(": Absolute");
                                     break;
                                 case 2:
-                                    LogLine(": Relocatable");
+                                    DebugLogger.LogLine(": Relocatable");
                                     break;
                                 case 3:
-                                    LogLine(": Loadable");
+                                    DebugLogger.LogLine(": Loadable");
                                     break;
                                 case 4:
-                                    LogLine(": Library");
+                                    DebugLogger.LogLine(": Library");
                                     break;
                                 default:
-                                    LogLine(": Unknown");
+                                    DebugLogger.LogLine(": Unknown");
+                                    DebugLogger.Unindent();
                                     return false;
                             }
+                            DebugLogger.Unindent();
                             AdExtensionPart.ObjectFormatType = (ObjectFormatType)n3;
                             break;
                         case 39:
-                            LogLine(" Case sensitivity");
+                            DebugLogger.LogLine(" Case sensitivity");
+                            DebugLogger.Indent();
                             n3 = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  "); Log(n3.ToString());
+                            DebugLogger.Log(n3);
                             switch (n3)
                             {
                                 case 1:
-                                    LogLine(": False");
+                                    DebugLogger.LogLine(": False");
                                     AdExtensionPart.CaseSensitive = false;
                                     break;
                                 case 2:
-                                    LogLine(": True");
+                                    DebugLogger.LogLine(": True");
                                     AdExtensionPart.CaseSensitive = true;
                                     break;
                                 default:
-                                    LogLine(": Unknown");
+                                    DebugLogger.LogLine(": Unknown");
+                                    DebugLogger.Unindent();
                                     return false;
                             }
+                            DebugLogger.Unindent();
                             break;
                         case 40:
-                            LogLine(" Memory model");
+                            DebugLogger.LogLine(" Memory model");
+                            DebugLogger.Indent();
                             n3 = ReadNumber(out isEscapedValue);
-                            Indent(nesting); Log("  "); Log(n3.ToString());
+                            DebugLogger.Log(n3);
                             switch (n3)
                             {
                                 case 0:
-                                    LogLine(": Tiny");
+                                    DebugLogger.LogLine(": Tiny");
                                     break;
                                 case 1:
-                                    LogLine(": Small");
+                                    DebugLogger.LogLine(": Small");
                                     break;
                                 case 2:
-                                    LogLine(": Medium");
+                                    DebugLogger.LogLine(": Medium");
                                     break;
                                 case 3:
-                                    LogLine(": Compact");
+                                    DebugLogger.LogLine(": Compact");
                                     break;
                                 case 4:
-                                    LogLine(": Large");
+                                    DebugLogger.LogLine(": Large");
                                     break;
                                 case 5:
-                                    LogLine(": Big");
+                                    DebugLogger.LogLine(": Big");
                                     break;
                                 case 6:
-                                    LogLine(": Huge");
+                                    DebugLogger.LogLine(": Huge");
                                     break;
                                 default:
-                                    LogLine(": Unknown");
+                                    DebugLogger.LogLine(": Unknown");
+                                    DebugLogger.Unindent();
                                     return false;
                             }
+                            DebugLogger.Unindent();
                             AdExtensionPart.MemoryModelSize = (MemoryModelSize)n3;
                             break;
                     }
@@ -939,14 +957,14 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE2CE))
                 {
-                    Indent(nesting); LogLine("Record E2CE.  Wonder what it means.");
+                    DebugLogger.LogLine("Record E2CE.  Wonder what it means.");
                     for (int i = 0; i < 32; i++)
-                        Log(file[index++].ToString("X2") + " ");
+                        DebugLogger.Log("{0:X2} ", file[index++]);
                     return false;
                 }
                 else
                 {
-                    LogLine("Unknown field.");
+                    DebugLogger.LogLine("Unknown field.");
                     return false;
                 }
 
@@ -1144,7 +1162,7 @@ namespace EzCalcLink
         }
         #endregion
 
-
+        /*
         #region Logging
         /// <summary>
         /// Used for logging.  Produces an indent.
@@ -1175,6 +1193,6 @@ namespace EzCalcLink
         {
             System.Console.WriteLine(s);
         }
-        #endregion
+        #endregion*/
     }
 }
