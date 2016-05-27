@@ -120,33 +120,117 @@ namespace EzCalcLink
         /// </summary>
         protected void processFile()
         {
+            // Header
+            DebugLogger.LogLine("Parsing header. . . .");
             DebugLogger.Indent();
-            while (parseHeaderField())
-                ;
+            parseHeaderField();
             DebugLogger.Unindent();
+            // Metadata 1
+            DebugLogger.LogLine("Seeking to P0 and parsing. . . .");
+            index = PtrToAsw0;
+            DebugLogger.Indent();
+            if (index != 0)
+                parseP0();
+            else
+                DebugLogger.LogLine("P0 not specified in index.");
+            DebugLogger.Unindent();
+            // Metadata 2
+            DebugLogger.LogLine("Seeking to P1 and parsing. . . .");
+            index = PtrToAsw1;
+            DebugLogger.Indent();
+            if (index != 0)
+                parseP1();
+            else
+                DebugLogger.LogLine("P1 not specified in index.");
+            DebugLogger.Unindent();
+            // Section information
+            DebugLogger.LogLine("Seeking to P2 and parsing. . . .");
+            index = PtrToAsw2;
+            DebugLogger.Indent();
+            if (index != 0)
+                parseP2();
+            else
+                DebugLogger.LogLine("P2 not specified in index.");
+            DebugLogger.Unindent();
+            // Symbols
+            DebugLogger.LogLine("Seeking to P3 and parsing. . . .");
+            index = PtrToAsw3;
+            DebugLogger.Indent();
+            if (index != 0)
+                parseP3();
+            else
+                DebugLogger.LogLine("P3 not specified in index.");
+            DebugLogger.Unindent();
+            // Not implemented
+            if (PtrToAsw4 != 0)
+                DebugLogger.LogLine("WARNING! P4 specified in index, but not implemented in parser.");
+            // Data
+            DebugLogger.LogLine("Seeking to P5 and parsing. . . .");
+            index = PtrToAsw5;
+            DebugLogger.Indent();
+            if (index != 0)
+            {
+                parseP5();
+                DebugLogger.Indent();
+                foreach (OmfSection s in Sections)
+                {
+                    DebugLogger.LogLine("Section Index: {0}", s.Index);
+                    DebugLogger.Indent();
+                    foreach (ContiguousMemory m in s.Memories)
+                    {
+                        DebugLogger.LogLine("Memory record: {0:X6}, size: {1:X4}", m.StartAddress, m.Size);
+                        //Indent(nesting + 3);
+                        //for (int i = m.StartAddress; i < m.EndAddress; i++)
+                        //    Log(m[i].ToString("X2"));
+                        //LogLine("");
+                    }
+                    DebugLogger.Unindent();
+                }
+                DebugLogger.Unindent();
+            }
+            else
+                DebugLogger.LogLine("P5 not specified in index.");
+            DebugLogger.Unindent();
+            // Also not implemented
+            if (PtrToAsw6 != 0)
+                DebugLogger.LogLine("WARNING! P6 specified in index, but not implemented in parser.");
+            DebugLogger.LogLine("Seeking to P7 and parsing. . . .");
+            index = PtrToAsw7;
+            DebugLogger.Indent();
+            if (index != 0)
+                parseP7();
+            else
+                DebugLogger.LogLine("P7 not specified in index.");
+            DebugLogger.Unindent();
+
         }
 
         protected bool parseHeaderField()
         {
-            DebugLogger.Log("Parsing field {0}, ", file[index].ToString("X2"));
+            //DebugLogger.Log("Parsing field {0}, ", file[index].ToString("X2"));
             
             bool isEscapedValue = false;
 
-            switch (file[index++])
+            if (!NextRecordIdIs(0xE0))
             {
-                case 0xE0: // Module Beginning
-                    DebugLogger.LogLine("Module Beginning (MB)");
-                    Processor = ReadString();
-                    DebugLogger.LogLine(" Processor = {0}", Processor);
-                    ModuleName = ReadString();
-                    DebugLogger.LogLine(" Module name = {0}", ModuleName);
-                    break;
-                case 0xEC: // Address Descriptor
+                Console.WriteLine("ERROR! File does not begin with record 0xE0 (Module Beginning).");
+                throw new FormatException("File parse error.");
+            }
+
+            DebugLogger.LogLine("Module Beginning (MB)");
+            Processor = ReadString();
+            DebugLogger.LogLine(" Processor = {0}", Processor);
+            ModuleName = ReadString();
+            DebugLogger.LogLine(" Module name = {0}", ModuleName);
+
+            while (WhichPart(index) == -1)
+                if (NextRecordIdIs(0xEC)) // Address Descriptor
+                {
                     DebugLogger.LogLine("Address Descriptor (AD)");
                     BitsPerMau = ReadNumber(out isEscapedValue);
-                    DebugLogger.Log(" Bits per MAU = {0}", BitsPerMau);
+                    DebugLogger.LogLine(" Bits per MAU = {0}", BitsPerMau);
                     MausPerAddress = ReadNumber(out isEscapedValue);
-                    DebugLogger.Log(" MAUs per address = {0}", MausPerAddress);
+                    DebugLogger.LogLine(" MAUs per address = {0}", MausPerAddress);
                     byte b = file[index];
                     if (b == 0xCC || b == 0xCD)
                         index++;
@@ -155,151 +239,83 @@ namespace EzCalcLink
                         DebugLogger.LogLine(" Addresses are little-endian");
                     else
                         DebugLogger.LogLine(" Addresses are big-endian");
-                    break;
-                case 0xE2: // Extended code
-                    DebugLogger.Log("extended code, {0:X2}, ", file[index]);
-                    switch (file[index++])
-                    {
-                        case 0xD7:
-                            DebugLogger.Log("extended code, {0:X2}, ", file[index]);
-                            switch (file[index++])
-                            {
-                                case 0:
-                                    DebugLogger.LogLine("Assign Pointer to AD Extension Part (ASW0)");
-                                    Parts[0] = PtrToAsw0 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW0 offset = {0:X8}", PtrToAsw0);
-                                    break;
-                                case 1:
-                                    DebugLogger.LogLine("Assign Pointer to Environment Part (ASW1)");
-                                    Parts[1] = PtrToAsw1 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW1 offset = {0:X8}", PtrToAsw1);
-                                    break;
-                                case 2:
-                                    DebugLogger.LogLine("Assign Pointer to Section Part (ASW2)");
-                                    Parts[2] = PtrToAsw2 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW2 offset = {0:X8}", PtrToAsw2);
-                                    break;
-                                case 3:
-                                    DebugLogger.LogLine("Assign Pointer to External Part (ASW3)");
-                                    Parts[3] = PtrToAsw3 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW3 offset = {0:X8}", PtrToAsw3);
-                                    break;
-                                case 4:
-                                    DebugLogger.LogLine("Assign Pointer to Debug Information Part (ASW4)");
-                                    Parts[4] = PtrToAsw4 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW4 offset = {0:X8}", PtrToAsw4);
-                                    break;
-                                case 5:
-                                    DebugLogger.LogLine("Assign Pointer to Data Part (ASW5)");
-                                    Parts[5] = PtrToAsw5 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW5 offset = {0:X8}", PtrToAsw5);
-                                    break;
-                                case 6:
-                                    DebugLogger.LogLine("Assign Pointer to Trailer Part (ASW6)");
-                                    Parts[6] = PtrToAsw6 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW6 offset = {0:X8}", PtrToAsw6);
-                                    break;
-                                case 7:
-                                    DebugLogger.LogLine("Assign Pointer to Module End Part (ASW7)");
-                                    Parts[7] = PtrToAsw7 = ReadNumber(out isEscapedValue);
-                                    DebugLogger.LogLine(" ASW7 offset = {0:X8}", PtrToAsw7);
-                                    break;
-                                default:
-                                    DebugLogger.LogLine("Unknown field.");
-                                    return false;
-                            }
-                            break;
-                        default:
-                            DebugLogger.LogLine("Unknown field.");
-                            return false;
-                    }
-                    break;
-                case 0xF0:
-                    index--;
-                    switch (WhichPart(index))
-                    {
-                        case 0:
-                            DebugLogger.LogLine("Start of ASW0");
-                            return parseP0(1);
-                        case 1:
-                            DebugLogger.LogLine("Start of ASW1");
-                            return parseP1(1);
-                        default:
-                            DebugLogger.LogLine("Field F0 unexpected.");
-                            return false;
-                    }
-                case 0xE6:
-                    index--;
-                    //if (WhichPart(index) == 2)
-                    //{
-                    DebugLogger.LogLine("Start of ASW2");
-                        return parseP2(1);
-                    //}
-                    //Indent(nesting); LogLine("Field E6 unexpected.");
-                    //break;
-                case 0xE5:
-                    if (WhichPart(index) == 5)
-                    {
-                        index--;
-                        DebugLogger.LogLine("");
-                        //DebugLogger.LogLine("IndexA: {0}", index);
-                    DebugLogger.LogLine("Start of ASW5");
-                        bool q = parseP5(1);
-                        DebugLogger.LogLine("SECTIONS:");
-                        //DebugLogger.LogLine("IndexB: {0:X4}", index);
-                        DebugLogger.Indent();
-                        foreach (OmfSection s in Sections)
-                        {
-                            DebugLogger.LogLine("Section Index: {0}", s.Index);
-                            DebugLogger.Indent();
-                            foreach (ContiguousMemory m in s.Memories)
-                            {
-                                DebugLogger.LogLine("Memory record: {0:X6}, size: {1:X4}", m.StartAddress, m.Size);
-                                /*Indent(nesting + 3);
-                                for (int i = m.StartAddress; i < m.EndAddress; i++)
-                                    Log(m[i].ToString("X2"));
-                                LogLine("");*/
-                            }
-                            DebugLogger.Unindent();
-                        }
-                        DebugLogger.Unindent();
-                        //DebugLogger.LogLine("IndexC: {0:X4}", index);
-                        //Console.ReadKey();
-                        return q;
-                    }
-                    else
-                    {
-                        currentSection = ReadNumber(out isEscapedValue);
-                        break;
-                    }
-                    /*Indent(nesting); LogLine("Field E5 unexpected.");
-                    return false;*/
-                case 0xE8:
-                    index--;
-                    DebugLogger.Log("External part (ASW3)");
-                    return parseP3(1);
-                case 0xE1:
-                    DebugLogger.LogLine("Module end (ME)! Let's go home!");
-                    return false;
-                default:
-                    DebugLogger.LogLine("Unknown field.");
-                    for (int i = 0; i < 32; i++ )
-                    {
-                        if (index + i < file.Length)
-                            DebugLogger.Log("{0:X2}", file[index + i]);
-                    }
-                    return false;
-            }
+                }
+                else if (NextRecordIdIs(0xE2D700))
+                {
+                    DebugLogger.LogLine("Assign Pointer to AD Extension Part (ASW0)");
+                    Parts[0] = PtrToAsw0 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW0 offset = {0:X8}", PtrToAsw0);
+                }
+                else if (NextRecordIdIs(0xE2D701))
+                {
+                    DebugLogger.LogLine("Assign Pointer to Environment Part (ASW1)");
+                    Parts[1] = PtrToAsw1 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW1 offset = {0:X8}", PtrToAsw1);
+                }
+                else if (NextRecordIdIs(0xE2D702))
+                {
+                    DebugLogger.LogLine("Assign Pointer to Section Part (ASW2)");
+                    Parts[2] = PtrToAsw2 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW2 offset = {0:X8}", PtrToAsw2);
+                }
+                else if (NextRecordIdIs(0xE2D703))
+                {
+                    DebugLogger.LogLine("Assign Pointer to External Part (ASW3)");
+                    Parts[3] = PtrToAsw3 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW3 offset = {0:X8}", PtrToAsw3);
+                }
+                else if (NextRecordIdIs(0xE2D704))
+                {
+                    DebugLogger.LogLine("Assign Pointer to Debug Information Part (ASW4)");
+                    Parts[4] = PtrToAsw4 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW4 offset = {0:X8}", PtrToAsw4);
+                }
+                else if (NextRecordIdIs(0xE2D705))
+                {
+                    DebugLogger.LogLine("Assign Pointer to Data Part (ASW5)");
+                    Parts[5] = PtrToAsw5 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW5 offset = {0:X8}", PtrToAsw5);
+                }
+                else if (NextRecordIdIs(0xE2D706))
+                {
+                    DebugLogger.LogLine("Assign Pointer to Trailer Part (ASW6)");
+                    Parts[6] = PtrToAsw6 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW6 offset = {0:X8}", PtrToAsw6);
+                }
+                else if (NextRecordIdIs(0xE2D707))
+                {
+                    DebugLogger.LogLine("Assign Pointer to Module End Part (ASW7)");
+                    Parts[7] = PtrToAsw7 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" ASW7 offset = {0:X8}", PtrToAsw7);
+                }
+                else
+                {
+                    DebugLogger.LogLine("Unknown or unexpected field!");
+                }
             return true;
         }
 
 
-        protected bool parseP3(int nesting)
+        protected void parseP7()
+        {
+            if (NextRecordIdIs(0xE1))
+            {
+                DebugLogger.LogLine("Module End (ME).");
+            }
+            else if (NextRecordIdIs(0xEE) || NextRecordIdIs(0xEF))
+            {
+                DebugLogger.LogLine("Checksum records. Ignored.");
+            }
+        }
+
+        protected bool parseP3()
         {
             bool isEscapedValue;
             int n1, n2, n3, n4, x1, x3;
 
-            while (true)
+            DebugLogger.LogLine("Current index: {0:X4}", index);
+
+            while (WhichPart(index) == 3)
                 if (NextRecordIdIs(0xE8))
                 {
                     DebugLogger.LogLine("Public (external) symbol (NI)");
@@ -440,17 +456,22 @@ namespace EzCalcLink
                 {
                     DebugLogger.LogLine("Weak external reference (WX)");
                 }
+                else if (NextRecordIdIs(0xE5))
+                {
+                    currentSection = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine("Set current section: {0}", currentSection);
+                }
                 else
-                    return true;
+                    return false;
+            return false;
         }
 
-        protected bool parseP2(int nesting)
+        protected bool parseP2()
         {
             bool isEscapedValue;
             int n3;
 
             while (WhichPart(index) == 2)
-            //while (true)
                 if (NextRecordIdIs(0xE6))
                 {
                     DebugLogger.LogLine("Section type (ST): ");
@@ -616,12 +637,12 @@ namespace EzCalcLink
         }
 
 
-        protected bool parseP5(int nesting)
+        protected bool parseP5()
         {
             bool isEscapedValue;
-            for (int i = 0; i < 16; i++)
-                DebugLogger.Log(file[index + i].ToString("X2"));
-            DebugLogger.LogLine("");
+            //for (int i = 0; i < 16; i++)
+            //    DebugLogger.Log(file[index + i].ToString("X2"));
+            //DebugLogger.LogLine("");
             OmfSection s;
             while (WhichPart(index) == 5)
                 if (NextRecordIdIs(0xE5))
@@ -688,7 +709,7 @@ namespace EzCalcLink
         }
 
 
-        protected bool parseP1(int nesting)
+        protected bool parseP1()
         {
             bool isEscapedValue;
             int n3;
@@ -831,7 +852,7 @@ namespace EzCalcLink
         }
 
 
-        protected bool parseP0(int nesting)
+        protected bool parseP0()
         {
             bool isEscapedValue;
             int n3;
@@ -1084,12 +1105,13 @@ namespace EzCalcLink
         /// </summary>
         /// <param name="id">ID number.  Byte count is inferred from value.</param>
         /// <returns>True if match found.</returns>
-        protected bool NextRecordIdIs(int id)
+        protected bool NextRecordIdIs(int id, bool eatField = true)
         {
             if (id < 0x100)
                 if (file[index] == id)
                 {
-                    index++;
+                    if (eatField)
+                        index++;
                     return true;
                 }
                 else
@@ -1097,7 +1119,8 @@ namespace EzCalcLink
             if (id < 0x10000)
                 if (file[index] == id >> 8 && file[index + 1] == (id & 0xFF))
                 {
-                    index += 2;
+                    if (eatField)
+                        index += 2;
                     return true;
                 }
                 else
@@ -1105,14 +1128,16 @@ namespace EzCalcLink
             if (id < 0x1000000)
                 if (file[index] == id >> 16 && (file[index + 1] == (id >> 8 & 0xFF)) && file[index + 2] == (id & 0xFF))
                 {
-                    index += 3;
+                    if (eatField)
+                        index += 3;
                     return true;
                 }
                 else
                     return false;
             if (file[index] == id >> 24 && file[index + 1] == (id >> 16 & 0xFF) && file[index + 2] == (id >> 8 & 0xFF) && file[index + 3] == (id & 0xFF))
             {
-                index += 4;
+                if (eatField)
+                    index += 4;
                 return true;
             }
             else
