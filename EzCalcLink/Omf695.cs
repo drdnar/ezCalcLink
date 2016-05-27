@@ -477,6 +477,14 @@ namespace EzCalcLink
                     DebugLogger.LogLine("Section type (ST): ");
                     currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(" Index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine("Created new section.");
+                        s = new OmfSection();
+                        s.Index = currentSection;
+                        Sections.Add(s);
+                    }
                     DebugLogger.Log(" Type: ");
                     if (NextRecordIdIs(0xC1D3D0))
                     {
@@ -549,10 +557,14 @@ namespace EzCalcLink
                         DebugLogger.LogLine("Short common relocatable sections thingies?");
                         return false;
                     }
-                    DebugLogger.LogLine(" Section name: {0}", ReadString());
-                    DebugLogger.LogLine(" Parent index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Sibling index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Context index: {0}", ReadNumber(out isEscapedValue));
+                    s.Name = ReadString();
+                    DebugLogger.LogLine(" Section name: {0}", s.Name);
+                    s.ParentIndex = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Parent index: {0}", s.ParentIndex);
+                    s.SiblingIndex = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Sibling index: {0}", s.SiblingIndex);
+                    s.ContextIndex = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Context index: {0}", s.ContextIndex);
                 }
                 else if (NextRecordIdIs(0xE7))
                 {
@@ -575,8 +587,16 @@ namespace EzCalcLink
                 else if (NextRecordIdIs(0xE2CC))
                 {
                     DebugLogger.LogLine("Section base address (ASL): ");
+                    currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Section base address: {0}", ReadNumber(out isEscapedValue));
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine("ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.SectionBaseAddress = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Section base address: {0}", s.SectionBaseAddress);
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
@@ -613,8 +633,16 @@ namespace EzCalcLink
                 else if (NextRecordIdIs(0xE2C6))
                 {
                     DebugLogger.LogLine("MAU size (ASF): ");
+                    currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" MAU size: {0}", ReadNumber(out isEscapedValue));
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine("ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.MauSize = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" MAU size: {0}", s.MauSize);
                 }
                 else if (NextRecordIdIs(0xE2CD))
                 {

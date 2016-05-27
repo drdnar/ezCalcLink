@@ -25,6 +25,26 @@ namespace EzCalcLink
         /// </summary>
         public int SectionBaseAddress;
 
+        /// <summary>
+        /// Section . . . name.
+        /// </summary>
+        public string Name;
+
+        /// <summary>
+        /// Some kind of tree
+        /// </summary>
+        public int ParentIndex;
+
+        /// <summary>
+        /// Some kind of linked list
+        /// </summary>
+        public int SiblingIndex;
+
+        /// <summary>
+        /// I've no idea what this specifies.
+        /// </summary>
+        public int ContextIndex;
+
         public int NextAddress;
 
 
