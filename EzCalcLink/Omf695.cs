@@ -125,6 +125,9 @@ namespace EzCalcLink
             DebugLogger.Indent();
             parseHeaderField();
             DebugLogger.Unindent();
+
+            //Console.ReadKey();
+
             // Metadata 1
             DebugLogger.LogLine("Seeking to P0 and parsing. . . .");
             index = PtrToAsw0;
@@ -161,9 +164,15 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P3 not specified in index.");
             DebugLogger.Unindent();
-            // Not implemented
-            if (PtrToAsw4 != 0)
-                DebugLogger.LogLine("WARNING! P4 specified in index, but not implemented in parser.");
+            // Debug information
+            DebugLogger.LogLine("Seeking to P4 and parsing. . . .");
+            index = PtrToAsw4;
+            DebugLogger.Indent();
+            if (index != 0)
+                parseP4();
+            else
+                DebugLogger.LogLine("P4 not specified in index.");
+            DebugLogger.Unindent();
             // Data
             DebugLogger.LogLine("Seeking to P5 and parsing. . . .");
             index = PtrToAsw5;
@@ -295,6 +304,324 @@ namespace EzCalcLink
             return true;
         }
 
+
+        protected void parseP4()
+        {
+            bool isEscapedValue;
+            while (WhichPart(index) == 4)
+                if (NextRecordIdIs(0xF8)) // Declare Block Beginning (BB)
+                {
+                    DebugLogger.LogLine("Declare block beginning (BE)");
+                    DebugLogger.Indent();
+                    switch (file[index++])
+                    {
+                        case 1:
+                            DebugLogger.LogLine("Unique typedefs for module");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Module name: {0}", ReadString());
+                            break;
+                        case 2:
+                            DebugLogger.LogLine("Global typedefs");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Module name: {0}", ReadString());
+                            break;
+                        case 3:
+                            DebugLogger.LogLine("High level module scope beginning");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Module name: {0}", ReadString());
+                            break;
+                        case 4:
+                            DebugLogger.LogLine("Global function");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Function name: {0}", ReadString());
+                            DebugLogger.LogLine(" Size of stack locals: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Type index for return value: {0:X4}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Offset expression: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                            if (NextItemIsNumber()) // This doesn't appear in the spec.  So I can't speak to its purpose.
+                                DebugLogger.LogLine(" Unknown data: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 5:
+                            DebugLogger.LogLine("Source code file name");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" File name: {0}", ReadString());
+                            if (!NextItemIsNumber())
+                                break;
+                            DateTime dt = new DateTime(ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
+                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
+                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" File date and time: {0}", dt);
+                            break;
+                        case 6:
+                            DebugLogger.LogLine("Local function");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Function name: {0}", ReadString());
+                            DebugLogger.LogLine(" Size of stack locals: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Type index for return value: {0:X4}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Offset expression: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 10:
+                            DebugLogger.LogLine("Assembler module scope beginning");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Module name: {0}", ReadString());
+                            DebugLogger.LogLine(" Input object file name: {0}", ReadString());
+                            DebugLogger.LogLine(" Tool type: {0}", ReadNumber(out isEscapedValue));
+                            if (NextItemIsString())
+                                DebugLogger.LogLine(" Version information: {0}", ReadString());
+                            if (!NextItemIsNumber())
+                                break;
+                            dt = new DateTime(ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
+                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
+                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Date and time: {0}", dt);
+                            break;
+                        case 11:
+                            DebugLogger.LogLine("Module section");
+                            DebugLogger.LogLine(" Size: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Name should be null: <{0}>", ReadString());
+                            switch (file[index++])
+                            {
+                                case 0:
+                                    DebugLogger.LogLine("Section type: Mixed");
+                                    break;
+                                case 1:
+                                    DebugLogger.LogLine("Section type: Code");
+                                    break;
+                                case 2:
+                                    DebugLogger.LogLine("Section type: Read/Write data");
+                                    break;
+                                case 3:
+                                    DebugLogger.LogLine("Section type: Read-only data");
+                                    break;
+                                case 4:
+                                    DebugLogger.LogLine("Section type: Stack");
+                                    break;
+                                case 5:
+                                    DebugLogger.LogLine("Section type: Memory");
+                                    break;
+                                default:
+                                    DebugLogger.LogLine("Section type: Unknown 0x{0:X2}", file[index - 1]);
+                                    break;
+                            }
+                            DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Offset expression: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" HP whatever: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        default:
+                            DebugLogger.LogLine("Unknown block type: 0x{0:X2}", file[index - 1]);
+                            for (int i = 0; i < 32; i++)
+                                DebugLogger.Log("{0:X2}", file[index + i]);
+                            DebugLogger.LogLine("");
+                            break;
+                    }
+                    DebugLogger.Unindent();
+                }
+                else if (NextRecordIdIs(0xF0)) // Declare Type Name (NN)
+                {
+                    DebugLogger.LogLine("Declare type name (NN)");
+                    DebugLogger.LogLine(" Name index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Name: {0}", ReadString());
+                }
+                else if (NextRecordIdIs(0xF2)) // Define Type Characteristics (TY)
+                {
+                    DebugLogger.LogLine("Define type characteristics (TY)");
+                    DebugLogger.LogLine(" Type index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Should be 0xCE: 0x{0:X2}", file[index++]);
+                    DebugLogger.LogLine(" Local name index: {0}", ReadNumber(out isEscapedValue));
+                }
+                else if (NextRecordIdIs(0xF1CE)) // Variable Attributes (ATN)
+                {
+                    DebugLogger.LogLine("Variable attributes (ATN)");
+                    int n1 = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Name index: {0}", n1);
+                    DebugLogger.LogLine(" Type index: {0}", ReadNumber(out isEscapedValue));
+                    int n3 = ReadNumber(out isEscapedValue);
+                    switch (n3)
+                    {
+                        case 1:
+                            DebugLogger.LogLine(" Automatic variable stack offset: 0x{0:X2}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 2:
+                            DebugLogger.LogLine(" Variable register: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 3:
+                            DebugLogger.LogLine(" Compiler defined static variable");
+                            break;
+                        case 4:
+                            DebugLogger.LogLine(" External function");
+                            break;
+                        case 5:
+                            DebugLogger.LogLine(" External variable definition");
+                            break;
+                        case 7:
+                            DebugLogger.LogLine(" Line number: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Column number: {0}", ReadNumber(out isEscapedValue));
+                            if (NextItemIsNumber())
+                                DebugLogger.LogLine(" Unknown data: {0}", ReadNumber(out isEscapedValue));
+                            if (NextItemIsNumber())
+                                DebugLogger.LogLine(" Unknown data: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 8:
+                            DebugLogger.LogLine(" Compiler global variable");
+                            break;
+                        case 9:
+                            DebugLogger.LogLine(" Variable life time: {0:X6}", ReadNumber(out isEscapedValue));
+                            if (n1 == 0)
+                                DebugLogger.LogLine(" Register: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 10:
+                            DebugLogger.LogLine(" Variable name for locked register");
+                            DebugLogger.LogLine(" Register index: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Frame offset: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 11:
+                            DebugLogger.LogLine(" Reserved for FORTRAN. Please no.");
+                            break;
+                        case 12:
+                            DebugLogger.LogLine(" Based variable");
+                            DebugLogger.LogLine(" Offset value: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                            int x2 = ReadNumber(out isEscapedValue);
+                            DebugLogger.Log(" Control number: {0} ", x2);
+                            switch (x2)
+                            {
+                                case 0:
+                                    DebugLogger.LogLine("Based from static memory");
+                                    break;
+                                case 1:
+                                    DebugLogger.LogLine("Based from register");
+                                    break;
+                                case 2:
+                                    DebugLogger.LogLine("Based from bank, section, or task");
+                                    break;
+                                case 3:
+                                    DebugLogger.LogLine("Based from selector or pointer");
+                                    break;
+                                case 4:
+                                    DebugLogger.LogLine("Indirected from reigster base");
+                                    break;
+                                default:
+                                    DebugLogger.LogLine("Unknown");
+                                    break;
+                            }
+                            int x3 = ReadNumber(out isEscapedValue);
+                            if (x3 == 0)
+                                DebugLogger.LogLine(" Local (00)");
+                            else
+                                DebugLogger.LogLine(" Public (0x{0:X2})", x3);
+                            DebugLogger.LogLine(" Memory space indicator value: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Base size: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 16:
+                            DebugLogger.LogLine(" Constant");
+                            int x1 = ReadNumber(out isEscapedValue);
+                            DebugLogger.Log(" Symbol class: {0} ", x1);
+                            switch (x1)
+                            {
+                                case 0:
+                                    DebugLogger.LogLine("Unknown class");
+                                    break;
+                                case 1:
+                                    DebugLogger.LogLine("EQU constant");
+                                    break;
+                                case 2:
+                                    DebugLogger.LogLine("SET constant");
+                                    break;
+                                case 3:
+                                    DebugLogger.LogLine("Pascal CONST constant");
+                                    break;
+                                case 4:
+                                    DebugLogger.LogLine("C #define constant (not to be confused with C# #define");
+                                    break;
+                                default:
+                                    DebugLogger.LogLine("Unknown");
+                                    break;
+                            }
+                            if (!NextItemIsNumber())
+                                break;
+                            x2 = ReadNumber(out isEscapedValue);
+                            if (x2 == 0)
+                                DebugLogger.LogLine(" Local (00)");
+                            else
+                                DebugLogger.LogLine(" Public (0x{0:X2})", x2);
+                            if (NextItemIsNumber())
+                                DebugLogger.LogLine(" Numeric value: {0}", ReadNumber(out isEscapedValue));
+                            else if (NextItemIsString())
+                                DebugLogger.LogLine(" String value: {0}", ReadString());
+                            break;
+                        case 19:
+                            DebugLogger.LogLine(" Static variable generated by assembler");
+                            DebugLogger.LogLine(" Number of elements: {0}", ReadNumber(out isEscapedValue));
+                            if (!NextItemIsNumber())
+                                break;
+                            x2 = ReadNumber(out isEscapedValue);
+                            if (x2 == 0)
+                                DebugLogger.LogLine(" Local (00)");
+                            else
+                                DebugLogger.LogLine(" Global (0x{0:X2})", x2);
+                            break;
+                        case 36:
+                            DebugLogger.LogLine(" Lowest version number of input files");
+                            break;
+                        case 37: // See section 3.2
+                        case 38: // See section 3.2
+                        case 39: // See section 3.2
+                        case 50: // See section 3.3
+                        case 51:
+                        case 52:
+                        case 53:
+                        case 54:
+                        case 55:
+                            DebugLogger.LogLine(" PARSING NOT IMPLEMENTED");
+                            break;
+                        case 62:
+                            DebugLogger.LogLine(" Procedure block other");
+                            DebugLogger.LogLine(" Type ID number: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Additional ATN or ASN record count: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 63:
+                            DebugLogger.LogLine(" Variable other");
+                            DebugLogger.LogLine(" Type ID number: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Additional ATN or ASN record count: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 64:
+                            DebugLogger.LogLine(" Module other.");
+                            DebugLogger.LogLine(" Type ID number: {0}", ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(" Additional ATN or ASN record count: {0}", ReadNumber(out isEscapedValue));
+                            break;
+                        case 65:
+                            DebugLogger.LogLine(" String: {0}", ReadString());
+                            break;
+                        default:
+                            DebugLogger.LogLine(" UNKNOWN: 0x{0:X2}", n3);
+                            break;
+
+                    }
+                }
+                else if (NextRecordIdIs(0xE2CE)) // Variable Values (ASN)
+                {
+                    DebugLogger.LogLine("Variable values (ASN)");
+                    DebugLogger.LogLine(" Symbol name index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" Symbol value: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                }
+                else if (NextRecordIdIs(0xE2D2)) // Variable Values (ASR), not implemented
+                {
+                    DebugLogger.LogLine("Variable values, ASR, not implemented");
+                }
+                else if (NextRecordIdIs(0xF9)) // Declare Block End (BE)
+                {
+                    DebugLogger.LogLine("Block end (BE)");
+                    if (NextItemIsNumber())
+                        DebugLogger.LogLine(" Additional number: 0x{0:X4}", ReadNumber(out isEscapedValue));
+                }
+                else
+                {
+                    DebugLogger.LogLine("ERROR! Unknown record ID.");
+                    for (int i = 0; i < 32; i++)
+                        DebugLogger.Log("{0:X2}", file[index + i]);
+                    DebugLogger.LogLine("");
+                    return;
+                }
+
+        }
 
         protected void parseP7()
         {
@@ -768,7 +1095,7 @@ namespace EzCalcLink
                     {
                         case 50:
                             DebugLogger.Log("Creation date and time: ");
-                            EnvironmentPart.DateTime = new DateTime(ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
+                            EnvironmentPart.DateTime = new DateTime(ReadNumber(out isEscapedValue) + 1900, ReadNumber(out isEscapedValue),
                                  ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
                                  ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue));
                             DebugLogger.LogLine(EnvironmentPart.DateTime.ToString());
@@ -1172,7 +1499,32 @@ namespace EzCalcLink
                 return false;
 
         }
+        
 
+        /// <summary>
+        /// Checks if the next item in the file can be parsed as a number.
+        /// index is not incremented.
+        /// </summary>
+        /// <returns>True if the next item is a number</returns>
+        protected bool NextItemIsNumber()
+        {
+            return file[index] <= 0x84;
+        }
+
+        /// <summary>
+        /// Checks if the next item in the file can be parsed as a string.
+        /// index is not incremented.
+        /// </summary>
+        /// <returns>True if the next item is a string</returns>
+        protected bool NextItemIsString()
+        {
+            return file[index] == 0xDE || file[index] == 0xDF;
+        }
+
+        /// <summary>
+        /// Reads a string, and increments index.
+        /// </summary>
+        /// <returns></returns>
         protected string ReadString()
         {
             bool isEscapedValue;
