@@ -65,6 +65,8 @@ namespace EzCalcLink
         public EnvironmentInfo EnvironmentPart;
         public List<OmfSection> Sections = new List<OmfSection>();
 
+        public OmfSymbolList Symbols = new OmfSymbolList();
+
         protected OmfSection MakeGetSection(int i)
         {
             OmfSection s = Sections.Where(x => x.Index == i).FirstOrDefault();
@@ -160,12 +162,20 @@ namespace EzCalcLink
             index = PtrToAsw3;
             DebugLogger.Indent();
             if (index != 0)
+            {
                 parseP3();
+                DebugLogger.LogLine("Symbols:");
+                DebugLogger.Indent();
+                for (int i = 0; i < Symbols.Count; i++)
+                    if (Symbols[i] != null)
+                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
+                DebugLogger.Unindent();
+            }
             else
                 DebugLogger.LogLine("P3 not specified in index.");
             DebugLogger.Unindent();
             // Debug information
-            DebugLogger.LogLine("Seeking to P4 and parsing. . . .");
+            /*DebugLogger.LogLine("Seeking to P4 and parsing. . . .");
             index = PtrToAsw4;
             DebugLogger.Indent();
             if (index != 0)
@@ -173,6 +183,7 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P4 not specified in index.");
             DebugLogger.Unindent();
+            */
             // Data
             DebugLogger.LogLine("Seeking to P5 and parsing. . . .");
             index = PtrToAsw5;
@@ -639,24 +650,29 @@ namespace EzCalcLink
         {
             bool isEscapedValue;
             int n1, n2, n3, n4, x1, x3;
-
-            DebugLogger.LogLine("Current index: {0:X4}", index);
+            OmfSymbol s;
+            //DebugLogger.LogLine("Current index: {0:X4}", index);
 
             while (WhichPart(index) == 3)
                 if (NextRecordIdIs(0xE8))
                 {
-                    DebugLogger.LogLine("Public (external) symbol (NI)");
-                    DebugLogger.LogLine(" Public name index record: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Symbol name: {0}", ReadString());
+                    //DebugLogger.LogLine("Public (external) symbol (NI)");
+                    n1 = ReadNumber(out isEscapedValue);
+                    //DebugLogger.LogLine(" Public name index record: {0}", n1);
+                    s = Symbols.GetOrCreate(n1);
+                    s.Name = ReadString();
+                    //DebugLogger.LogLine(" Symbol name: {0}", s.Name);
                 }
                 else if (NextRecordIdIs(0xF1C9))
                 {
-                    DebugLogger.LogLine("Variable attribute (ATI)");
+                    //DebugLogger.LogLine("Variable attribute (ATI)");
                     n1 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(" Symbol name index: {0}", n1);
+                    //DebugLogger.LogLine(" Symbol name index: {0}", n1);
                     n2 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(" Symbol type index: {0}", n2);
-                    DebugLogger.Indent();
+                    s = Symbols.GetOrCreate(n1);
+                    //DebugLogger.LogLine(" Symbol type index: {0}", n2);
+                    s.SymbolType = (OmfSymbol.SymbolTypes)n2;
+                    /*DebugLogger.Indent();
                     switch (n2)
                     {
                         case 0:
@@ -687,18 +703,20 @@ namespace EzCalcLink
                             DebugLogger.LogLine("I DON'T KNOW, PLEASE CHECK");
                             break;
                     }
-                    DebugLogger.Unindent();
+                    DebugLogger.Unindent();*/
                     n3 = ReadNumber(out isEscapedValue);
-                    DebugLogger.Log(" Attribute definition: {0}", n3);
+                    //DebugLogger.Log(" Attribute definition: {0}", n3);
                     switch (n3)
                     {
                         case 8:
-                            DebugLogger.Log(" Global compiler symbol.");
+                            //DebugLogger.LogLine(" Global compiler symbol.");
+                            s.AttributeDefinition = OmfSymbol.AttributeDefinitions.GlobalCompilerSymbol;
                             break;
                         case 16:
-                            DebugLogger.Log(" Constant. ");
+                            //DebugLogger.Log(" Constant. ");
                             x1 = ReadNumber(out isEscapedValue);
-                            switch (x1)
+                            s.AttributeDefinition = (OmfSymbol.AttributeDefinitions)((int)OmfSymbol.AttributeDefinitions.ConstantGeneric | x1);
+                            /*switch (x1)
                             {
                                 case 0:
                                     DebugLogger.LogLine("Unknown class.");
@@ -718,22 +736,27 @@ namespace EzCalcLink
                                 default:
                                     DebugLogger.LogLine("{0}", x1);
                                     break;
-                            }
+                            }*/
                             if (file[index] > 0x84)
                                 break; // . . . that really shouldn't be legal syntax
                             DebugLogger.LogLine("I don't know. I give up. This is impossible to parse unambiguously.");
                             return false;
                         case 19:
-                            DebugLogger.Log(" Static symbol generated by assembler.");
+                            //DebugLogger.LogLine(" Static symbol generated by assembler.");
+                            s.AttributeDefinition = OmfSymbol.AttributeDefinitions.AssemblerStaticSymbol;
                             break;
                     }
-                    DebugLogger.LogLine(" Element count: {0}", ReadNumber(out isEscapedValue));
+                    s.UnknownData = ReadNumber(out isEscapedValue);
+                    //DebugLogger.LogLine(" Element count: {0}", s.UnknownData);
                 }
                 else if (NextRecordIdIs(0xE2C9))
                 {
-                    DebugLogger.LogLine("Variable values (ASI)");
-                    DebugLogger.LogLine(" Symbol index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Symbol value: {0:X6}", ReadNumber(out isEscapedValue));
+                    //DebugLogger.LogLine("Variable values (ASI)");
+                    n1 = ReadNumber(out isEscapedValue);
+                    //DebugLogger.LogLine(" Symbol index: {0}", n1);
+                    s = Symbols.GetOrCreate(n1);
+                    s.Value = ReadNumber(out isEscapedValue);
+                    //DebugLogger.LogLine(" Symbol value: {0:X6}", s.Value);
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
@@ -789,7 +812,10 @@ namespace EzCalcLink
                     DebugLogger.LogLine("Set current section: {0}", currentSection);
                 }
                 else
+                {
+                    DebugLogger.LogLine("FAULT");
                     return false;
+                }
             return false;
         }
 

@@ -45,6 +45,8 @@
     <Compile Include="DebugLogger.cs" />
     <Compile Include="Omf695.cs" />
     <Compile Include="OmfSection.cs" />
+    <Compile Include="OmfSymbol.cs" />
+    <Compile Include="OmfSymbolList.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
