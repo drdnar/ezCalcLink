@@ -44,6 +44,8 @@
     <Compile Include="ContiguousMemory.cs" />
     <Compile Include="DebugLogger.cs" />
     <Compile Include="Omf695.cs" />
+    <Compile Include="OmfExpression.cs" />
+    <Compile Include="OmfExpressionElement.cs" />
     <Compile Include="OmfSection.cs" />
     <Compile Include="OmfSymbol.cs" />
     <Compile Include="OmfSymbolList.cs" />

@@ -927,7 +927,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Boundary alignment divisor: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    return false;
+                    //return false;
                 }
                 else if (NextRecordIdIs(0xE2D3))
                 {
@@ -935,7 +935,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Section size: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    return false;
+                    //return false;
                 }
                 else if (NextRecordIdIs(0xE2CC))
                 {
@@ -957,7 +957,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Section offset: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    return false;
+                    //return false;
                 }
                 else if (NextRecordIdIs(0xFB))
                 {
@@ -965,7 +965,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Context index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Context name: {0}", ReadString());
                     DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    return false;
+                    //return false;
                 }
                 else if (NextRecordIdIs(0xE2C1))
                 {
@@ -973,7 +973,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Region size: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    return false;
+                    //return false;
                 }
                 else if (NextRecordIdIs(0xE2C2))
                 {
@@ -981,7 +981,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Address: {0:X6}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    return false;
+                    //return false;
                 }
                 else if (NextRecordIdIs(0xE2C6))
                 {
@@ -1003,7 +1003,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" M-Value: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    return false;
+                    //return false;
                 }
                 else if (NextRecordIdIs(0xE5)) // Apparently, this is legal?
                 {
@@ -1012,8 +1012,12 @@ namespace EzCalcLink
                     //LogLine(currentSection.ToString());
                 }
                 else
+                {
+                    for (int i = 0; i < 32; i++)
+                        DebugLogger.Log("{0:X2}", file[index + i]);
+                    DebugLogger.LogLine();
                     return false;
-
+                }
             return true;
         }
 
@@ -1592,6 +1596,41 @@ namespace EzCalcLink
             return -1;
         }
         #endregion
+
+
+        protected OmfExpression ReadExpression()
+        {
+            OmfExpression expr = new OmfExpression();
+            int i = 0;
+            int depth = 0;
+            do
+            {
+                byte b = file[index + i++];
+                if (b > 0x80 && b <= 0x84)
+                    i += b & 0x0F;
+                else if (b == 0xDE)
+                    i++;
+                else if (b == 0xDF)
+                    i += 2;
+                else if (b >= 0xE0)
+                    throw new FormatException("Invalid data in expression");
+                // I'm just not going to try to verify the correctness of nesting here.
+                else if (b == 0xBA || b == 0xBC || b == 0xBE)
+                    depth++;
+                else if (b == 0xBB || b == 0xBD || b == 0xBF)
+                    depth--;
+                // For everything else, the i++ above takes care of it.
+            }
+            while (depth > 0);
+
+            expr.Data = new byte[i];
+
+            while (i --> 0) // "while i goes toward zero"
+                expr.Data[i] = file[index + i];
+
+            index += i;
+            return expr;
+        }
 
         /*
         #region Logging

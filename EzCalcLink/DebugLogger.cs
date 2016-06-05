@@ -78,6 +78,12 @@ namespace EzCalcLink
             Log(c.ToString());
         }
 
+        public static void LogLine()
+        {
+            Console.WriteLine();
+            NewLine = true;
+        }
+
         public static void LogLine(string s)
         {
             ConsoleColor bg = Console.BackgroundColor;
