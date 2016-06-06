@@ -37,7 +37,9 @@ namespace EzCalcLink
 
         public AttributeDefinitions AttributeDefinition;
 
-        public int Value;
+        //public int Value;
+
+        public OmfExpression Expression;
 
         public int UnknownData;
     }

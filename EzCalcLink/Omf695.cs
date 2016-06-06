@@ -168,7 +168,8 @@ namespace EzCalcLink
                 DebugLogger.Indent();
                 for (int i = 0; i < Symbols.Count; i++)
                     if (Symbols[i] != null)
-                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
+                        //DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
+                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP", Symbols[i].UnknownData);
                 DebugLogger.Unindent();
             }
             else
@@ -311,6 +312,9 @@ namespace EzCalcLink
                 else
                 {
                     DebugLogger.LogLine("Unknown or unexpected field!");
+                    for (int i = 0; i < 32; i++)
+                        DebugLogger.Log("{0:X2}", file[index + i]);
+                    DebugLogger.LogLine();
                 }
             return true;
         }
@@ -421,7 +425,7 @@ namespace EzCalcLink
                             DebugLogger.LogLine("Unknown block type: 0x{0:X2}", file[index - 1]);
                             for (int i = 0; i < 32; i++)
                                 DebugLogger.Log("{0:X2}", file[index + i]);
-                            DebugLogger.LogLine("");
+                            DebugLogger.LogLine();
                             break;
                     }
                     DebugLogger.Unindent();
@@ -656,12 +660,12 @@ namespace EzCalcLink
             while (WhichPart(index) == 3)
                 if (NextRecordIdIs(0xE8))
                 {
-                    //DebugLogger.LogLine("Public (external) symbol (NI)");
+                    DebugLogger.LogLine("Public (external) symbol (NI)");
                     n1 = ReadNumber(out isEscapedValue);
-                    //DebugLogger.LogLine(" Public name index record: {0}", n1);
+                    DebugLogger.LogLine(" Public name index record: {0}", n1);
                     s = Symbols.GetOrCreate(n1);
                     s.Name = ReadString();
-                    //DebugLogger.LogLine(" Symbol name: {0}", s.Name);
+                    DebugLogger.LogLine(" Symbol name: {0}", s.Name);
                 }
                 else if (NextRecordIdIs(0xF1C9))
                 {
@@ -751,12 +755,22 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE2C9))
                 {
-                    //DebugLogger.LogLine("Variable values (ASI)");
+                    DebugLogger.LogLine("Variable values (ASI)");
                     n1 = ReadNumber(out isEscapedValue);
-                    //DebugLogger.LogLine(" Symbol index: {0}", n1);
+                    DebugLogger.LogLine(" Symbol index: {0}", n1);
                     s = Symbols.GetOrCreate(n1);
-                    s.Value = ReadNumber(out isEscapedValue);
-                    //DebugLogger.LogLine(" Symbol value: {0:X6}", s.Value);
+                    if (NextItemIsNumber())
+                    {
+                        s.Expression = ReadExpression();
+                        //s.Value = s.Expression.ResolvedValue;
+                        DebugLogger.LogLine(" Symbol value: {0:X6}", s.Expression.ResolvedValue);
+                    }
+                    else
+                    {
+                        s.Expression = ReadExpression();
+                        DebugLogger.LogLine(" Symbol expression: {0}", s.Expression.ToString());
+                    }
+                    
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
@@ -813,6 +827,10 @@ namespace EzCalcLink
                 }
                 else
                 {
+                    for (int i = 0; i < 32; i++)
+                        DebugLogger.Log("{0:X2}", file[index + i]);
+                    DebugLogger.LogLine();
+
                     DebugLogger.LogLine("FAULT");
                     return false;
                 }
@@ -1595,74 +1613,41 @@ namespace EzCalcLink
             // Don't handle extra-large ints
             return -1;
         }
+
+
+        public static int ReadNumber(byte[] data, ref int index, out bool isEscapedValue)
+        {
+            isEscapedValue = false;
+            byte b = data[index++];
+            int r;
+            if (b < 0x80)
+                return b;
+            if (b == 0x80)
+                return 0;
+            if (isEscapedValue = (b >= 0x89 && b != 0xDE && b != 0xDF))
+                return b;
+            r = data[index++];
+            if (b == 0x81 || b == 0xDE)
+                return r;
+            r = (r << 8) | data[index++];
+            if (b == 0x82 || b == 0xDF)
+                return r;
+            r = (r << 8) | data[index++];
+            if (b == 0x83)
+                return r;
+            r = (r << 8) | data[index++];
+            if (b == 0x84)
+                return r;
+            // Don't handle extra-large ints
+            return -1;
+        }
         #endregion
 
 
         protected OmfExpression ReadExpression()
         {
-            OmfExpression expr = new OmfExpression();
-            int i = 0;
-            int depth = 0;
-            do
-            {
-                byte b = file[index + i++];
-                if (b > 0x80 && b <= 0x84)
-                    i += b & 0x0F;
-                else if (b == 0xDE)
-                    i++;
-                else if (b == 0xDF)
-                    i += 2;
-                else if (b >= 0xE0)
-                    throw new FormatException("Invalid data in expression");
-                // I'm just not going to try to verify the correctness of nesting here.
-                else if (b == 0xBA || b == 0xBC || b == 0xBE)
-                    depth++;
-                else if (b == 0xBB || b == 0xBD || b == 0xBF)
-                    depth--;
-                // For everything else, the i++ above takes care of it.
-            }
-            while (depth > 0);
-
-            expr.Data = new byte[i];
-
-            while (i --> 0) // "while i goes toward zero"
-                expr.Data[i] = file[index + i];
-
-            index += i;
-            return expr;
+            return OmfExpression.FromArray(ref index, file);
         }
 
-        /*
-        #region Logging
-        /// <summary>
-        /// Used for logging.  Produces an indent.
-        /// </summary>
-        /// <param name="nesting"></param>
-        protected static void Indent(int nesting)
-        {
-            for (; nesting > 0; nesting--)
-                Log("  ");
-        }
-
-
-        /// <summary>
-        /// Probably some kind of logging function.  But who knows?
-        /// </summary>
-        /// <param name="s"></param>
-        protected static void Log(string s)
-        {
-            System.Console.Write(s);
-        }
-
-
-        /// <summary>
-        /// I don't know, maybe this will attempt to log something, or maybe install Windows ME.
-        /// </summary>
-        /// <param name="s"></param>
-        protected static void LogLine(string s)
-        {
-            System.Console.WriteLine(s);
-        }
-        #endregion*/
     }
 }
