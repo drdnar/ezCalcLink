@@ -41,6 +41,6 @@ namespace EzCalcLink
 
         public OmfExpression Expression;
 
-        public int UnknownData;
+        public int AddressSpaceIndex;
     }
 }

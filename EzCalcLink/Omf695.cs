@@ -64,6 +64,7 @@ namespace EzCalcLink
         public AdExtensionInfo AdExtensionPart;
         public EnvironmentInfo EnvironmentPart;
         public List<OmfSection> Sections = new List<OmfSection>();
+        public List<OmfContext> Contexts = new List<OmfContext>();
 
         public OmfSymbolList Symbols = new OmfSymbolList();
 
@@ -169,7 +170,7 @@ namespace EzCalcLink
                 for (int i = 0; i < Symbols.Count; i++)
                     if (Symbols[i] != null)
                         //DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
-                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP", Symbols[i].UnknownData);
+                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, AdrSpc: {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP", Contexts.Where(x => x.Id == Symbols[i].AddressSpaceIndex).First().Name);
                 DebugLogger.Unindent();
             }
             else
@@ -750,7 +751,7 @@ namespace EzCalcLink
                             s.AttributeDefinition = OmfSymbol.AttributeDefinitions.AssemblerStaticSymbol;
                             break;
                     }
-                    s.UnknownData = ReadNumber(out isEscapedValue);
+                    s.AddressSpaceIndex = ReadNumber(out isEscapedValue);
                     //DebugLogger.LogLine(" Element count: {0}", s.UnknownData);
                 }
                 else if (NextRecordIdIs(0xE2C9))
@@ -980,10 +981,19 @@ namespace EzCalcLink
                 else if (NextRecordIdIs(0xFB))
                 {
                     DebugLogger.LogLine("Define context (NC): ");
-                    DebugLogger.LogLine(" Context index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Context name: {0}", ReadString());
-                    DebugLogger.LogLine("Parser not programmed to use this field's information.  Fixme!");
-                    //return false;
+                    OmfContext ctx = new OmfContext();
+                    Contexts.Add(ctx);
+                    ctx.Index = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Context index: {0}", ctx.Index);
+                    ctx.Name = ReadString();
+                    DebugLogger.LogLine(" Context name: {0}", ctx.Name);
+                    if (NextItemIsNumber())
+                    {
+                        ctx.UnknownData = ReadNumber(out isEscapedValue);
+                        DebugLogger.LogLine(" Context unknown data: {0:X2}", ctx.UnknownData);
+                        ctx.Id = ReadNumber(out isEscapedValue);
+                        DebugLogger.LogLine(" Context ID: {0:X2}", ctx.Id);
+                    }
                 }
                 else if (NextRecordIdIs(0xE2C1))
                 {
@@ -1031,6 +1041,7 @@ namespace EzCalcLink
                 }
                 else
                 {
+                    DebugLogger.LogLine("Unknown record ID.");
                     for (int i = 0; i < 32; i++)
                         DebugLogger.Log("{0:X2}", file[index + i]);
                     DebugLogger.LogLine();
