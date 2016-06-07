@@ -1176,7 +1176,9 @@ namespace EzCalcLink
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", currentSection);
                     s = MakeGetSection(currentSection);
-                    s.NextAddress = ReadNumber(out isEscapedValue);
+                    OmfExpression e = ReadExpression();
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, e.ToString());
+                    //s.NextAddress = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(" Value: {0:X6}", s.NextAddress);
                 }
                 else if (NextRecordIdIs(0xED))
@@ -1223,8 +1225,47 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE4))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Load With Relocation (LR)");
+                    for (int q = 0; q < 256; q++)
+                    {
+                        if (Console.ForegroundColor == ConsoleColor.White)
+                            Console.ForegroundColor = ConsoleColor.Gray;
+                        else
+                            Console.ForegroundColor = ConsoleColor.White;
+                        Console.Write("{0:X2}", file[index + q]);
+                    }
+                    Console.WriteLine();
+
+                    if (NextItemIsNumber())
+                    {
+                        int n = ReadNumber(out isEscapedValue);
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                            " Form A. Bytes: {0}", n);
+                        DebugLogger.Log(" ");
+                        for (int i = 0; i < n; i++)
+                        {
+                            DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                                "{0:X2}", file[index + i]);
+                        }
+                        DebugLogger.LogLine();
+                        index += n;
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                            " Next byte: {0:X2}", ReadNumber(out isEscapedValue));
+                    }
+                    else if (file[index] >= 0xC0 && file[index] < 0xE0)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                            " Form B. Letter: {0}, Offset: {1}", (char)(file[index++] - 0xC0 + (int)'A'), ReadNumber(out isEscapedValue));
+                    }
+                    else
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                            " Form C");
+                        OmfExpression exp = ReadExpression();
+                        DebugLogger.LogLine(" Expression: {0}", exp.ToString());
+                        DebugLogger.LogLine(" Number: {0}", ReadNumber(out isEscapedValue));
+                    }
                 }
                 else if (NextRecordIdIs(0xFA))
                 {
