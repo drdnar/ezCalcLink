@@ -192,7 +192,7 @@ namespace EzCalcLink
                     return Datum.ToString("X6");
                 case OmfExpressionElement.ElementTypes.Variable:
                     if (IsVariableWithArgument)
-                        return Variable.ToString() + "(" + Datum.ToString("X6") + ")";
+                        return Variable.ToString() + "(" + Datum.ToString("X2") + ")";
                     else
                         return Variable.ToString();
                 case OmfExpressionElement.ElementTypes.Function:
