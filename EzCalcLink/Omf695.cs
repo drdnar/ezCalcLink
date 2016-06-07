@@ -1012,7 +1012,8 @@ namespace EzCalcLink
                     s.SiblingIndex = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(" Sibling index: {0}", s.SiblingIndex);
                     s.ContextIndex = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(" Context index: {0}", s.ContextIndex);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Context index: {0}: {1}", s.ContextIndex, Contexts.Where(x => x.Index == s.ContextIndex).First().Name);
                 }
                 else if (NextRecordIdIs(0xE7))
                 {
@@ -1023,7 +1024,8 @@ namespace EzCalcLink
                     // TODO: Figure out how to handle optional arguments?
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Boundary alignment divisor: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
+                    if (NextItemIsNumber()) // This field should exist
+                        DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
                     //return false;
                 }
@@ -1061,7 +1063,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Section offset: {0}", ReadNumber(out isEscapedValue));
+                        " Section offset: {0:X6}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
                     //return false;
                 }
