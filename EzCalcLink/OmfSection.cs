@@ -41,9 +41,24 @@ namespace EzCalcLink
         public int SiblingIndex;
 
         /// <summary>
-        /// I've no idea what this specifies.
+        /// Specifies the address space (RAM, ROM, &c.)
         /// </summary>
         public int ContextIndex;
+
+        /// <summary>
+        /// Specifies nothing useful?
+        /// </summary>
+        public int AlignmentDivisor;
+
+        /// <summary>
+        /// Specifies the section's size
+        /// </summary>
+        public int Size;
+
+        /// <summary>
+        /// Section base address
+        /// </summary>
+        public int Offset;
 
         public int NextAddress;
 

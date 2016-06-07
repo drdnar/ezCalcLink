@@ -154,7 +154,20 @@ namespace EzCalcLink
             index = PtrToAsw2;
             DebugLogger.Indent();
             if (index != 0)
+            {
                 parseP2();
+                DebugLogger.LogLine(DebugLogger.LogType.Verbose | DebugLogger.LogType.FileHeader, "Contexts:");
+                DebugLogger.Indent();
+                foreach (var c in Contexts)
+                    DebugLogger.LogLine("#{0}: ID: {1:X2}, Unknown: {2:X2}, Name: {3}", c.Index, c.Id, c.UnknownData, c.Name);
+                DebugLogger.Unindent();
+                DebugLogger.LogLine(DebugLogger.LogType.Verbose | DebugLogger.LogType.FileHeader, "Sections:");
+                DebugLogger.Indent();
+                foreach (var s in Sections)
+                    DebugLogger.LogLine("#{0}: Misc: {2} {3} {4}, Size {5:X6}, Addr: {6:X6}, {7} {8}, Name: {9}",
+                        s.Index, s.MauSize, s.ParentIndex, s.SiblingIndex, s.AlignmentDivisor, s.Size, s.Offset, s.ContextIndex, Contexts.Where(x => x.Index == s.ContextIndex).First().Name, s.Name);
+                DebugLogger.Unindent();
+            }
             else
                 DebugLogger.LogLine("P2 not specified in index.");
             DebugLogger.Unindent();
@@ -170,7 +183,7 @@ namespace EzCalcLink
                 for (int i = 0; i < Symbols.Count; i++)
                     if (Symbols[i] != null)
                         //DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
-                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, AdrSpc: {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP", Contexts.Where(x => x.Id == Symbols[i].AddressSpaceIndex).First().Name);
+                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP", Contexts.Where(x => x.Id == Symbols[i].AddressSpaceIndex).First().Name);
                 DebugLogger.Unindent();
             }
             else
@@ -185,6 +198,9 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P4 not specified in index.");
             DebugLogger.Unindent();
+
+            Console.ReadKey();
+
             // Data
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P5 and parsing. . . .");
             index = PtrToAsw5;
@@ -1021,25 +1037,36 @@ namespace EzCalcLink
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section alignment (SA): ");
+                    currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
-                    // TODO: Figure out how to handle optional arguments?
+                        " Section index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.AlignmentDivisor = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Boundary alignment divisor: {0}", ReadNumber(out isEscapedValue));
-                    if (NextItemIsNumber()) // This field should exist
+                        " Boundary alignment divisor: {0}", s.AlignmentDivisor);
+                    if (NextItemIsNumber())
                         DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
-                    //return false;
                 }
                 else if (NextRecordIdIs(0xE2D3))
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section size (ASS): ");
+                    currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Section size: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
-                    //return false;
+                        " Section index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.Size = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Section size: {0}", s.Size);
                 }
                 else if (NextRecordIdIs(0xE2CC))
                 {
@@ -1062,12 +1089,18 @@ namespace EzCalcLink
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Variable values or section offset? (ASR): ");
+                    currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
+                        " Section index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.Offset = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Section offset: {0:X6}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
-                    //return false;
+                        " Section offset: {0:X6}", s.Offset);
                 }
                 else if (NextRecordIdIs(0xFB))
                 {
@@ -1174,7 +1207,7 @@ namespace EzCalcLink
                         "Current section PC (ASP)");
                     currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", currentSection);
+                        " Section index: {0} {1}", currentSection, Sections.Where(x => x.Index == currentSection).First().Name);
                     s = MakeGetSection(currentSection);
                     OmfExpression e = ReadExpression();
                     DebugLogger.LogLine(DebugLogger.LogType.Error, e.ToString());
