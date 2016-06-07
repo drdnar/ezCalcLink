@@ -39,6 +39,8 @@ namespace EzCalcLink
 
         //public int Value;
 
+        public bool IsExternalReference;
+
         public OmfExpression Expression;
 
         public int AddressSpaceIndex;

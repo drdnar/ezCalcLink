@@ -140,6 +140,7 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P0 not specified in index.");
             DebugLogger.Unindent();
+            
             // Metadata 2
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P1 and parsing. . . .");
             index = PtrToAsw1;
@@ -149,6 +150,7 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P1 not specified in index.");
             DebugLogger.Unindent();
+
             // Section information
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P2 and parsing. . . .");
             index = PtrToAsw2;
@@ -171,6 +173,7 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P2 not specified in index.");
             DebugLogger.Unindent();
+
             // Symbols
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P3 and parsing. . . .");
             index = PtrToAsw3;
@@ -183,12 +186,18 @@ namespace EzCalcLink
                 for (int i = 0; i < Symbols.Count; i++)
                     if (Symbols[i] != null)
                         //DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
-                        DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP", Contexts.Where(x => x.Id == Symbols[i].AddressSpaceIndex).First().Name);
+                        if (!Symbols[i].IsExternalReference)
+                            DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, 
+                                (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP",
+                                Symbols[i].AddressSpaceIndex != 0 ? Contexts.Where(x => x.Id == Symbols[i].AddressSpaceIndex).First().Name : "<N/A>");
+                        else
+                            DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition);
                 DebugLogger.Unindent();
             }
             else
                 DebugLogger.LogLine("P3 not specified in index.");
             DebugLogger.Unindent();
+
             // Debug information
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P4 and parsing. . . .");
             index = PtrToAsw4;
@@ -228,12 +237,15 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P5 not specified in index.");
             DebugLogger.Unindent();
+            
             // Also not implemented
             if (PtrToAsw6 != 0)
                 DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "WARNING! P6 specified in index, but not implemented in parser.");
             else
                 DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "(No P6.)");
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P7 and parsing. . . .");
+            
+            // Module end
             index = PtrToAsw7;
             DebugLogger.Indent();
             if (index != 0)
@@ -401,7 +413,11 @@ namespace EzCalcLink
                             DebugLogger.LogLine(DebugLogger.LogType.P4 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                                 " Size of stack locals: {0}", ReadNumber(out isEscapedValue));
                             DebugLogger.LogLine(" Type index for return value: {0:X4}", ReadNumber(out isEscapedValue));
-                            DebugLogger.LogLine(" Offset expression: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                            OmfExpression e = ReadExpression();
+                            if (e.IsSimpleNumber)
+                                DebugLogger.LogLine(" Offset value: 0x{0:X6}", e.ResolvedValue);
+                            else
+                                DebugLogger.LogLine(" Offset expression: {0}", e.ToString());
                             if (NextItemIsNumber()) // This doesn't appear in the spec.  So I can't speak to its purpose.
                                 DebugLogger.LogLine(" Unknown data: {0}", ReadNumber(out isEscapedValue));
                             break;
@@ -688,7 +704,11 @@ namespace EzCalcLink
                         "Variable values (ASN)");
                     DebugLogger.LogLine(DebugLogger.LogType.P4 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Symbol name index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(" Symbol value: 0x{0:X6}", ReadNumber(out isEscapedValue));
+                    OmfExpression e = ReadExpression();
+                    if (e.IsSimpleNumber)
+                        DebugLogger.LogLine(" Symbol value: 0x{0:X6}", e.ResolvedValue);
+                    else
+                        DebugLogger.LogLine(" Symbol expression: {0}", e.ToString());
                 }
                 else if (NextRecordIdIs(0xE2D2)) // Variable Values (ASR), not implemented
                 {
@@ -752,8 +772,8 @@ namespace EzCalcLink
                     n1 = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Symbol name index: {0}", n1);
-                    n2 = ReadNumber(out isEscapedValue);
                     s = Symbols.GetOrCreate(n1);
+                    n2 = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Symbol type index: {0}", n2);
                     s.SymbolType = (OmfSymbol.SymbolTypes)n2;
@@ -866,14 +886,18 @@ namespace EzCalcLink
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "External reference name (NX)");
+                    n1 = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " External reference index: {0}", ReadNumber(out isEscapedValue));
+                        " External reference index: {0}", n1);
+                    s = Symbols.GetOrCreate(n1);
+                    s.IsExternalReference = true;
+                    s.Name = ReadString();
                     DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Symbol name: {0}", ReadString());
+                        " Symbol name: {0}", s.Name);
                 }
                 else if (NextRecordIdIs(0xF1D8))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.Error,//DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "External reference relocation information (ATX)");
                     n1 = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
