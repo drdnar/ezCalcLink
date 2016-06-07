@@ -215,6 +215,8 @@ namespace EzCalcLink
             // Also not implemented
             if (PtrToAsw6 != 0)
                 DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "WARNING! P6 specified in index, but not implemented in parser.");
+            else
+                DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "(No P6.)");
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P7 and parsing. . . .");
             index = PtrToAsw7;
             DebugLogger.Indent();
@@ -1158,23 +1160,20 @@ namespace EzCalcLink
         protected bool parseP5()
         {
             bool isEscapedValue;
-            //for (int i = 0; i < 16; i++)
-            //    DebugLogger.Log(file[index + i].ToString("X2"));
-            //DebugLogger.LogLine("");
             OmfSection s;
             while (WhichPart(index) == 5)
                 if (NextRecordIdIs(0xE5))
                 {
                     currentSection = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Current section index (SB): {0}", currentSection);
                 }
                 else if (NextRecordIdIs(0xE2D0))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Current section PC (ASP)");
                     currentSection = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", currentSection);
                     s = MakeGetSection(currentSection);
                     s.NextAddress = ReadNumber(out isEscapedValue);
@@ -1182,7 +1181,7 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xED))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Load Constant MAUs (LD)");
                     s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
                     if (s == null)
@@ -1191,12 +1190,12 @@ namespace EzCalcLink
                         return false;
                     }
                     int n = ReadNumber(out isEscapedValue);
-                    DebugLogger.Log(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Data bytes: {0}  ", n);
                     for (int i = 0; i < n; i++)
                     {
                         s.SetByte(file[index + i]);
-                        DebugLogger.Log(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                             "{0:X2}", file[index + i]);
                     }
                     DebugLogger.LogLine();
@@ -1204,37 +1203,40 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE3))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Initialize Relocation Base (IR)");
                 }
                 else if (NextRecordIdIs(0xF7))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Repeat Data (RE)");
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Variables Values (ASR)"); // "Not implemented"
                 }
                 else if (NextRecordIdIs(0xE2D7))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Variables Values (ASW)");
                 }
                 else if (NextRecordIdIs(0xE4))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Load With Relocation (LR)");
                 }
                 else if (NextRecordIdIs(0xFA))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Load With Translation (LT)");
                 }
                 else
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Error!");
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown record ID.");
+                    for (int i = 0; i < 32; i++)
+                        DebugLogger.Log("{0:X2}", file[index + i]);
+                    DebugLogger.LogLine();
                     return false;
                 }
             return true;
