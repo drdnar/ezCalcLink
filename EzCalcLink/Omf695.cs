@@ -918,10 +918,10 @@ namespace EzCalcLink
             while (WhichPart(index) == 2)
                 if (NextRecordIdIs(0xE6))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section type (ST): ");
                     currentSection = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Index: {0}", currentSection);
                     OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
                     if (s == null)
@@ -931,7 +931,7 @@ namespace EzCalcLink
                         s.Index = currentSection;
                         Sections.Add(s);
                     }
-                    DebugLogger.Log(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.Log(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Type: ");
                     if (NextRecordIdIs(0xC1D3D0))
                     {
@@ -1007,7 +1007,7 @@ namespace EzCalcLink
                     s.Name = ReadString();
                     DebugLogger.LogLine(" Section name: {0}", s.Name);
                     s.ParentIndex = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Parent index: {0}", s.ParentIndex);
                     s.SiblingIndex = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(" Sibling index: {0}", s.SiblingIndex);
@@ -1016,12 +1016,12 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE7))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section alignment (SA): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
                     // TODO: Figure out how to handle optional arguments?
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Boundary alignment divisor: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
@@ -1029,9 +1029,9 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE2D3))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section size (ASS): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(" Section size: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
@@ -1039,10 +1039,10 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE2CC))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section base address (ASL): ");
                     currentSection = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
                     OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
                     if (s == null)
@@ -1051,31 +1051,31 @@ namespace EzCalcLink
                         throw new FormatException();
                     }
                     s.SectionBaseAddress = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Section base address: {0}", s.SectionBaseAddress);
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Variable values or section offset? (ASR): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Section offset: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
                     //return false;
                 }
                 else if (NextRecordIdIs(0xFB))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Define context (NC): ");
                     OmfContext ctx = new OmfContext();
                     Contexts.Add(ctx);
                     ctx.Index = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType./*Very*/Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType./*Very*/Verbose | DebugLogger.LogType.FieldValue,
                         " Context index: {0}", ctx.Index);
                     ctx.Name = ReadString();
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Context name: {0}", ctx.Name);
                     if (NextItemIsNumber())
                     {
@@ -1087,32 +1087,32 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE2C1))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Physical region size (ASA): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Region size: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
                     //return false;
                 }
                 else if (NextRecordIdIs(0xE2C2))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Physical region base address (ASB): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Address: {0:X6}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
                     //return false;
                 }
                 else if (NextRecordIdIs(0xE2C6))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "MAU size (ASF): ");
                     currentSection = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
                     OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
                     if (s == null)
@@ -1121,16 +1121,16 @@ namespace EzCalcLink
                         throw new FormatException();
                     }
                     s.MauSize = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " MAU size: {0}", s.MauSize);
                 }
                 else if (NextRecordIdIs(0xE2CD))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "M-Value (ASM): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " M-Value: {0}", ReadNumber(out isEscapedValue));
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
                     //return false;
@@ -1138,7 +1138,7 @@ namespace EzCalcLink
                 else if (NextRecordIdIs(0xE5)) // Apparently, this is legal?
                 {
                     currentSection = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Current section index (SB): {0}", currentSection);
                 }
                 else
