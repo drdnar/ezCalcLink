@@ -166,8 +166,8 @@ namespace EzCalcLink
                 DebugLogger.LogLine(DebugLogger.LogType.Verbose | DebugLogger.LogType.FileHeader, "Sections:");
                 DebugLogger.Indent();
                 foreach (var s in Sections)
-                    DebugLogger.LogLine("#{0}: Misc: {2} {3} {4}, Size {5:X6}, Addr: {6:X6}, {7} {8}, Name: {9}",
-                        s.Index, s.MauSize, s.ParentIndex, s.SiblingIndex, s.AlignmentDivisor, s.Size, s.Offset, s.ContextIndex, Contexts.Where(x => x.Index == s.ContextIndex).First().Name, s.Name);
+                    DebugLogger.LogLine("#{0}: Misc: {2} {3} {4}, Size {5:X6}, Addr: {6:X6}, {7:X2} {8}, Name: {9}",
+                        s.Index, s.MauSize, s.ParentIndex, s.SiblingIndex, s.AlignmentDivisor, s.Size, s.Offset, s.ContextIndex, ResolveContextName(s.ContextIndex), s.Name);
                 DebugLogger.Unindent();
             }
             else
@@ -187,9 +187,9 @@ namespace EzCalcLink
                     if (Symbols[i] != null)
                         //DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
                         if (!Symbols[i].IsExternalReference)
-                            DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, 
+                            DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, {6:X2} {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, 
                                 (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : Symbols[i].Expression.ToString(), //"EXP",
-                                Symbols[i].AddressSpaceIndex != 0 ? Contexts.Where(x => x.Id == Symbols[i].AddressSpaceIndex).First().Name : "<N/A>");
+                                ResolveContextName(Symbols[i].AddressSpaceIndex), Symbols[i].AddressSpaceIndex);
                         else
                             DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition);
                 DebugLogger.Unindent();
@@ -608,7 +608,7 @@ namespace EzCalcLink
                             else
                                 DebugLogger.LogLine(" Public (0x{0:X2})", x3);
                             int m = ReadNumber(out isEscapedValue);
-                            DebugLogger.LogLine(" Memory space indicator value: 0x{0:X2} {1}", m, Contexts.Where(x => x.Id == m).First().Name);
+                            DebugLogger.LogLine(" Memory space indicator value: 0x{0:X2} {1}", m, ResolveContextName(m));
                             DebugLogger.LogLine(" Base size: {0}", ReadNumber(out isEscapedValue));
                             break;
                         case 16:
@@ -1054,7 +1054,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Sibling index: {0}", s.SiblingIndex);
                     s.ContextIndex = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Context index: {0}: {1}", s.ContextIndex, Contexts.Where(x => x.Index == s.ContextIndex).First().Name);
+                        " Context index: {0:X2}: {1}", s.ContextIndex, ResolveContextName(s.ContextIndex));
                 }
                 else if (NextRecordIdIs(0xE7))
                 {
@@ -1097,7 +1097,7 @@ namespace EzCalcLink
                         "Section base address (ASL): ");
                     currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
+                        " Section index: {0}", currentSection);
                     OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
                     if (s == null)
                     {
@@ -1133,7 +1133,7 @@ namespace EzCalcLink
                     Contexts.Add(ctx);
                     ctx.Index = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType./*Very*/Verbose | DebugLogger.LogType.FieldValue,
-                        " Context index: {0}", ctx.Index);
+                        " Context index: 0x{0:X2}", ctx.Index);
                     ctx.Name = ReadString();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Context name: {0}", ctx.Name);
@@ -1258,7 +1258,7 @@ namespace EzCalcLink
                         DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                             "{0:X2}", file[index + i]);
                     }
-                    DebugLogger.LogLine();
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue);
                     index += n;
                 }
                 else if (NextRecordIdIs(0xE3))
@@ -1866,6 +1866,16 @@ namespace EzCalcLink
             return -1;
         }
         #endregion
+
+
+        public string ResolveContextName(int index)
+        {
+            OmfContext c = Contexts.Where(x => x.Index == index).FirstOrDefault();
+            if (c == null)
+                return "<unnamed>";
+            else
+                return c.Name;
+        }
 
 
         protected OmfExpression ReadExpression()
