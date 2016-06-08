@@ -188,7 +188,7 @@ namespace EzCalcLink
                         //DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, Thingy: {5:X2}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition, Symbols[i].Value, Symbols[i].UnknownData);
                         if (!Symbols[i].IsExternalReference)
                             DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, 
-                                (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : "EXP",
+                                (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : Symbols[i].Expression.ToString(), //"EXP",
                                 Symbols[i].AddressSpaceIndex != 0 ? Contexts.Where(x => x.Id == Symbols[i].AddressSpaceIndex).First().Name : "<N/A>");
                         else
                             DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition);
@@ -208,8 +208,6 @@ namespace EzCalcLink
                 DebugLogger.LogLine("P4 not specified in index.");
             DebugLogger.Unindent();
 
-            Console.ReadKey();
-
             // Data
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P5 and parsing. . . .");
             index = PtrToAsw5;
@@ -220,7 +218,7 @@ namespace EzCalcLink
                 DebugLogger.Indent();
                 foreach (OmfSection s in Sections)
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.Verbose | DebugLogger.LogType.FileHeader, "Section Index: {0}", s.Index);
+                    DebugLogger.LogLine(DebugLogger.LogType.Verbose | DebugLogger.LogType.FileHeader, "Section Index: {0} {1}", s.Index, s.Name);
                     DebugLogger.Indent();
                     foreach (ContiguousMemory m in s.Memories)
                     {
@@ -609,7 +607,8 @@ namespace EzCalcLink
                                 DebugLogger.LogLine(" Local (00)");
                             else
                                 DebugLogger.LogLine(" Public (0x{0:X2})", x3);
-                            DebugLogger.LogLine(" Memory space indicator value: {0}", ReadNumber(out isEscapedValue));
+                            int m = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogLine(" Memory space indicator value: 0x{0:X2} {1}", m, Contexts.Where(x => x.Id == m).First().Name);
                             DebugLogger.LogLine(" Base size: {0}", ReadNumber(out isEscapedValue));
                             break;
                         case 16:
@@ -1223,7 +1222,7 @@ namespace EzCalcLink
                 {
                     currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
-                        "Current section index (SB): {0}", currentSection);
+                        "Current section index (SB): {0} {1}", currentSection, Sections.Where(x => x.Index == currentSection).First().Name);
                 }
                 else if (NextRecordIdIs(0xE2D0))
                 {
@@ -1262,23 +1261,27 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xE3))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.Error,//DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Initialize Relocation Base (IR)");
+                    Console.ReadKey();
                 }
                 else if (NextRecordIdIs(0xF7))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.Error,//DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Repeat Data (RE)");
+                    Console.ReadKey();
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.Error,//DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Variables Values (ASR)"); // "Not implemented"
+                    Console.ReadKey();
                 }
                 else if (NextRecordIdIs(0xE2D7))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.Error,//DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Variables Values (ASW)");
+                    Console.ReadKey();
                 }
                 else if (NextRecordIdIs(0xE4))
                 {
@@ -1326,8 +1329,9 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xFA))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.Error,//DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Load With Translation (LT)");
+                    Console.ReadKey();
                 }
                 else
                 {

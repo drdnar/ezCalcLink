@@ -43,7 +43,11 @@ namespace EzCalcLink
                 e.Datum = Omf695.ReadNumber(data, ref index, out isEscapedValue);
             }
             else if (b >= 0x90 && b < 0xC0)
+            {
                 e.Type = b;
+                if (b == (int)FunctionTypes.Escape)
+                    e.Datum = data[index++];
+            }
             else
             {
                 e.Type = b;
@@ -71,7 +75,7 @@ namespace EzCalcLink
         /// </summary>
         public enum FunctionTypes
         {
-            Unknown90 = 0x90,
+            Comma = 0x90,
             F = 0xA0,
             T = 0xA1,
             Abs = 0xA2,
@@ -97,13 +101,13 @@ namespace EzCalcLink
             If = 0xB6,
             Else = 0xB7,
             End = 0xB8,
-/*            Escape = 0xB9,
+            Escape = 0xB9,
             EscapeIsDef = 0x1B9,
             EscapeTrans = 0x2B9,
             EscapeSplit = 0x3B9,
             EscapeInBlock = 0x4B9,
-            EscapeCall_Opt = 0x5B9,*/
-            IsDef = 0xB9,
+            EscapeCall_Opt = 0x5B9,
+            EscapeRShift = 0x6B9,
             OpenExpressionA = 0xBA,
             CloseExpressionA = 0xBB,
             OpenExpressionB = 0xBC,
@@ -112,7 +116,21 @@ namespace EzCalcLink
             CloseExpressionC = 0xBF,
         }
 
-        
+
+        /// <summary>
+        /// Different types of escaped functions.
+        /// </summary>
+        public enum EscapedFunctionTypes
+        {
+            IsDef = 1,
+            Trans = 2,
+            Split = 3,
+            InBlock = 4,
+            Call_Opt = 5,
+            RShift = 6,
+        }
+
+
         /// <summary>
         /// Returns the purpose of this element.
         /// </summary>
@@ -168,7 +186,10 @@ namespace EzCalcLink
             get
             {
                 if (ElementType == ElementTypes.Function)
-                    return (FunctionTypes)Type;
+                    if (Type == (int)FunctionTypes.Escape)
+                        return (FunctionTypes)((Datum << 8) | Type);
+                    else
+                        return (FunctionTypes)Type;
                 throw new FormatException("Element is not a function");
             }
         }
@@ -198,8 +219,8 @@ namespace EzCalcLink
                 case OmfExpressionElement.ElementTypes.Function:
                     switch (FunctionType)
                     {
-                        case FunctionTypes.Unknown90:
-                            return "PUSH";
+                        case FunctionTypes.Comma:
+                            return ",";
                         case FunctionTypes.F:
                             return "FALSE";
                         case FunctionTypes.T:
@@ -248,8 +269,20 @@ namespace EzCalcLink
                             return "IF";
                         case FunctionTypes.Else:
                             return "ELSE";
-                        case FunctionTypes.IsDef:
+                        case FunctionTypes.Escape:
+                            return "ESCAPE";
+                        case FunctionTypes.EscapeIsDef:
                             return "ISDEF";
+                        case FunctionTypes.EscapeTrans:
+                            return "TRANS";
+                        case FunctionTypes.EscapeSplit:
+                            return "SPLIT";
+                        case FunctionTypes.EscapeInBlock:
+                            return "INBLOCK";
+                        case FunctionTypes.EscapeCall_Opt:
+                            return "CALL_OPT";
+                        case FunctionTypes.EscapeRShift:
+                            return ">>";
                         case FunctionTypes.OpenExpressionA:
                             return "{A{";
                         case FunctionTypes.CloseExpressionA:
