@@ -167,7 +167,7 @@ namespace EzCalcLink
                 DebugLogger.Indent();
                 foreach (var s in Sections)
                     DebugLogger.LogLine("#{0}: Misc: {2} {3} {4}, Size {5:X6}, Addr: {6:X6}, {7:X2} {8}, Name: {9}",
-                        s.Index, s.MauSize, s.ParentIndex, s.SiblingIndex, s.AlignmentDivisor, s.Size, s.Offset, s.ContextIndex, ResolveContextName(s.ContextIndex), s.Name);
+                        s.Index, s.MauSize, s.ParentIndex, s.SiblingIndex, s.AlignmentDivisor, s.Size, s.Offset, s.ContextIndex, ResolveContextNameByIndex(s.ContextIndex), s.Name);
                 DebugLogger.Unindent();
             }
             else
@@ -189,7 +189,7 @@ namespace EzCalcLink
                         if (!Symbols[i].IsExternalReference)
                             DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. Value: {4:X6}, {6:X2} {5}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, 
                                 (int)Symbols[i].AttributeDefinition, Symbols[i].Expression.IsSimpleNumber ? Symbols[i].Expression.ResolvedValue.ToString("X6") : Symbols[i].Expression.ToString(), //"EXP",
-                                ResolveContextName(Symbols[i].AddressSpaceIndex), Symbols[i].AddressSpaceIndex);
+                                ResolveContextNameById(Symbols[i].AddressSpaceIndex), Symbols[i].AddressSpaceIndex);
                         else
                             DebugLogger.LogLine("#{0}: T: {2:X2}, D: {3:X4}. {1} ", i, Symbols[i].Name, (int)Symbols[i].SymbolType, (int)Symbols[i].AttributeDefinition);
                 DebugLogger.Unindent();
@@ -498,6 +498,11 @@ namespace EzCalcLink
                             DebugLogger.LogLine(" Section index: {0}", ReadNumber(out isEscapedValue));
                             DebugLogger.LogLine(" Offset expression: 0x{0:X6}", ReadNumber(out isEscapedValue));
                             DebugLogger.LogLine(" HP whatever: {0}", ReadNumber(out isEscapedValue));
+                            if (NextItemIsNumber())
+                            {
+                                int n = ReadNumber(out isEscapedValue);
+                                DebugLogger.LogLine(" Possibly address space: {0:X2} {1}", n, ResolveContextNameById(n));
+                            }
                             break;
                         default:
                             DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown block type: 0x{0:X2}", file[index - 1]);
@@ -608,7 +613,7 @@ namespace EzCalcLink
                             else
                                 DebugLogger.LogLine(" Public (0x{0:X2})", x3);
                             int m = ReadNumber(out isEscapedValue);
-                            DebugLogger.LogLine(" Memory space indicator value: 0x{0:X2} {1}", m, ResolveContextName(m));
+                            DebugLogger.LogLine(" Memory space indicator value: 0x{0:X2} {1}", m, ResolveContextNameById(m));
                             DebugLogger.LogLine(" Base size: {0}", ReadNumber(out isEscapedValue));
                             break;
                         case 16:
@@ -1054,7 +1059,7 @@ namespace EzCalcLink
                     DebugLogger.LogLine(" Sibling index: {0}", s.SiblingIndex);
                     s.ContextIndex = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Context index: {0:X2}: {1}", s.ContextIndex, ResolveContextName(s.ContextIndex));
+                        " Context index: {0:X2}: {1}", s.ContextIndex, ResolveContextNameByIndex(s.ContextIndex));
                 }
                 else if (NextRecordIdIs(0xE7))
                 {
@@ -1868,11 +1873,21 @@ namespace EzCalcLink
         #endregion
 
 
-        public string ResolveContextName(int index)
+        public string ResolveContextNameByIndex(int i)
         {
-            OmfContext c = Contexts.Where(x => x.Index == index).FirstOrDefault();
+            OmfContext c = Contexts.Where(x => x.Index == i).FirstOrDefault();
             if (c == null)
-                return "<unnamed>";
+                return "<?>";
+            else
+                return c.Name;
+        }
+
+
+        public string ResolveContextNameById(int i)
+        {
+            OmfContext c = Contexts.Where(x => x.Id == i).FirstOrDefault();
+            if (c == null)
+                return "<?>";
             else
                 return c.Name;
         }
