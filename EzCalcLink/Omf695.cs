@@ -293,69 +293,72 @@ namespace EzCalcLink
                     else
                         DebugLogger.LogLine(" Addresses are big-endian");
                 }
-                else if (NextRecordIdIs(0xE2D700))
+                else if (NextRecordIdIs(0xE2D7))
                 {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to AD Extension Part (ASW0)");
-                    Parts[0] = PtrToAsw0 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW0 offset = {0:X8}", PtrToAsw0);
-                }
-                else if (NextRecordIdIs(0xE2D701))
-                {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to Environment Part (ASW1)");
-                    Parts[1] = PtrToAsw1 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW1 offset = {0:X8}", PtrToAsw1);
-                }
-                else if (NextRecordIdIs(0xE2D702))
-                {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to Section Part (ASW2)");
-                    Parts[2] = PtrToAsw2 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW2 offset = {0:X8}", PtrToAsw2);
-                }
-                else if (NextRecordIdIs(0xE2D703))
-                {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to External Part (ASW3)");
-                    Parts[3] = PtrToAsw3 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW3 offset = {0:X8}", PtrToAsw3);
-                }
-                else if (NextRecordIdIs(0xE2D704))
-                {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to Debug Information Part (ASW4)");
-                    Parts[4] = PtrToAsw4 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW4 offset = {0:X8}", PtrToAsw4);
-                }
-                else if (NextRecordIdIs(0xE2D705))
-                {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to Data Part (ASW5)");
-                    Parts[5] = PtrToAsw5 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW5 offset = {0:X8}", PtrToAsw5);
-                }
-                else if (NextRecordIdIs(0xE2D706))
-                {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to Trailer Part (ASW6)");
-                    Parts[6] = PtrToAsw6 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW6 offset = {0:X8}", PtrToAsw6);
-                }
-                else if (NextRecordIdIs(0xE2D707))
-                {
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
-                    DebugLogger.LogLine("Assign Pointer to Module End Part (ASW7)");
-                    Parts[7] = PtrToAsw7 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
-                    DebugLogger.LogLine(" ASW7 offset = {0:X8}", PtrToAsw7);
+                    int asw = ReadNumber(out isEscapedValue);
+                    switch (asw)
+                    {
+                        case 0:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to AD Extension Part (ASW0)");
+                            Parts[0] = PtrToAsw0 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW0 offset = {0:X8}", PtrToAsw0);
+                            break;
+                        case 1:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to Environment Part (ASW1)");
+                            Parts[1] = PtrToAsw1 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW1 offset = {0:X8}", PtrToAsw1);
+                            break;
+                        case 2:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to Section Part (ASW2)");
+                            Parts[2] = PtrToAsw2 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW2 offset = {0:X8}", PtrToAsw2);
+                            break;
+                        case 3:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to External Part (ASW3)");
+                            Parts[3] = PtrToAsw3 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW3 offset = {0:X8}", PtrToAsw3);
+                            break;
+                        case 4:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to Debug Information Part (ASW4)");
+                            Parts[4] = PtrToAsw4 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW4 offset = {0:X8}", PtrToAsw4);
+                            break;
+                        case 5:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to Data Part (ASW5)");
+                            Parts[5] = PtrToAsw5 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW5 offset = {0:X8}", PtrToAsw5);
+                            break;
+                        case 6:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to Trailer Part (ASW6)");
+                            Parts[6] = PtrToAsw6 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW6 offset = {0:X8}", PtrToAsw6);
+                            break;
+                        case 7:
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine("Assign Pointer to Module End Part (ASW7)");
+                            Parts[7] = PtrToAsw7 = ReadNumber(out isEscapedValue);
+                            DebugLogger.LogMaskChange(DebugLogger.LogType.FieldValue, DebugLogger.LogType.FieldHeader);
+                            DebugLogger.LogLine(" ASW7 offset = {0:X8}", PtrToAsw7);
+                            break;
+                        default:
+                            DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown ASW: {0}", asw);
+                            DebugLogger.LogLine(DebugLogger.LogType.Error, " Offset: {0:X8}", ReadNumber(out isEscapedValue));
+                            break;
+                    }   
                 }
                 else
                 {
@@ -363,6 +366,7 @@ namespace EzCalcLink
                     for (int i = 0; i < 32; i++)
                         DebugLogger.Log("{0:X2}", file[index + i]);
                     DebugLogger.LogLine();
+                    return false;
                 }
             return true;
         }
@@ -1459,7 +1463,7 @@ namespace EzCalcLink
                             DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown field.");
                             for (int i = 0; i < 32; i++)
                                 DebugLogger.Log("{0:X2}", file[index++]);
-                            
+                            DebugLogger.LogLine();
                             return false;
                     }
 
@@ -1475,6 +1479,9 @@ namespace EzCalcLink
                 else
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown field.");
+                    for (int i = 0; i < 32; i++)
+                        DebugLogger.Log("{0:X2}", file[index++]);
+                    DebugLogger.LogLine();
                     return false;
                 }
 
