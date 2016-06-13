@@ -43,13 +43,13 @@
   <ItemGroup>
     <Compile Include="ContiguousMemory.cs" />
     <Compile Include="DebugLogger.cs" />
-    <Compile Include="Omf695.cs" />
-    <Compile Include="OmfContext.cs" />
-    <Compile Include="OmfExpression.cs" />
-    <Compile Include="OmfExpressionElement.cs" />
-    <Compile Include="OmfSection.cs" />
-    <Compile Include="OmfSymbol.cs" />
-    <Compile Include="OmfSymbolList.cs" />
+    <Compile Include="Omf\Omf695.cs" />
+    <Compile Include="Omf\OmfContext.cs" />
+    <Compile Include="Omf\OmfExpression.cs" />
+    <Compile Include="Omf\OmfExpressionElement.cs" />
+    <Compile Include="Omf\OmfSection.cs" />
+    <Compile Include="Omf\OmfSymbol.cs" />
+    <Compile Include="Omf\OmfSymbolList.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
