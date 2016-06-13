@@ -1250,7 +1250,7 @@ namespace EzCalcLink
                 }
                 else if (NextRecordIdIs(0xED))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Load Constant MAUs (LD)");
                     s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
                     if (s == null)
@@ -1259,7 +1259,7 @@ namespace EzCalcLink
                         return false;
                     }
                     int n = ReadNumber(out isEscapedValue);
-                    DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                         " Data bytes: {0}  ", n);
                     for (int i = 0; i < n; i++)
                     {
@@ -1267,7 +1267,7 @@ namespace EzCalcLink
                         DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                             "{0:X2}", file[index + i]);
                     }
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue);
                     index += n;
                 }
                 else if (NextRecordIdIs(0xE3))
@@ -1312,7 +1312,7 @@ namespace EzCalcLink
                                     "{0:X2}", file[index + i]);
                             }
                             index += bytes;
-                            DebugLogger.LogLine();
+                            DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue);
                         }
                         else
                         {

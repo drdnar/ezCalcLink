@@ -10,7 +10,7 @@ namespace EzCalcLink
     {
         static void Main(string[] args)
         {
-            Omf695 obj = Omf695.LoadObjectFile("graphc.lib");
+            Omf695 obj = Omf695.LoadObjectFile("main.obj");
             Console.ReadKey();
         }
     }
