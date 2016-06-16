@@ -95,5 +95,46 @@ namespace EzCalcLink
                 Memories.Remove(n);
             }
         }
+
+
+        internal struct Relocation
+        {
+            /// <summary>
+            /// Address/offset in the output section the relocation exists at
+            /// </summary>
+            public int Address;
+
+            /// <summary>
+            /// Number of MAUs this relocation takes up (useful if mixed-mode and IN/OUT are used)
+            /// </summary>
+            public byte Size;
+
+            /// <summary>
+            /// Defines what this relocation refers to
+            /// </summary>
+            public enum TargetType : byte
+            {
+                SectionOffset,
+                ExternalVariableIndex,
+            }
+
+            public TargetType Type;
+
+            /// <summary>
+            /// Gives the target section index or target variable number
+            /// </summary>
+            public int TargetIndex;
+
+            /// <summary>
+            /// For section indexes, gives the index into the section
+            /// </summary>
+            public int TargetOffset;
+
+
+            public void FinalizeRelocation()
+            {
+
+            }
+        }
     }
 }

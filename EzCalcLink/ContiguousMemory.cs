@@ -231,5 +231,23 @@ namespace EzCalcLink
                 data = newData;
             }
         }
+
+        /// <summary>
+        /// Appends the data in the given second memory.  The second memory's virtual start address is discarded.
+        /// </summary>
+        /// <param name="m"></param>
+        public void Concatenate(ContiguousMemory m)
+        {
+            if (this.data.Length - this.lastValidIndex < m.Size)
+            {
+                byte[] newData = new byte[this.data.Length + m.Size];
+                for (int i = 0; i < this.lastValidIndex; i++)
+                    newData[i] = this.data[i];
+                this.data = newData;
+            }
+            for (int i = this.lastValidIndex, j = m.firstValidIndex; j < m.lastValidIndex; i++, j++)
+                this.data[i] = m.data[j];
+            this.lastValidIndex += m.Size;
+        }
     }
 }

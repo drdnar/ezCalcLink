@@ -43,6 +43,11 @@
   <ItemGroup>
     <Compile Include="ContiguousMemory.cs" />
     <Compile Include="DebugLogger.cs" />
+    <Compile Include="Object\AddressSpace.cs" />
+    <Compile Include="Object\ObjectFile.cs" />
+    <Compile Include="Object\Relocation.cs" />
+    <Compile Include="Object\Section.cs" />
+    <Compile Include="Object\Symbol.cs" />
     <Compile Include="Omf\Omf695.cs" />
     <Compile Include="Omf\OmfContext.cs" />
     <Compile Include="Omf\OmfExpression.cs" />
