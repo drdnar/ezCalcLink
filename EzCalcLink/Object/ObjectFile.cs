@@ -30,5 +30,15 @@ namespace EzCalcLink.Object
         /// Contains a list of all symbols
         /// </summary>
         public List<Symbol> Symbols = new List<Symbol>();
+
+        /// <summary>
+        /// True if the object file contains relocation information
+        /// </summary>
+        public bool Relocatable;
+
+        /// <summary>
+        /// True if case-sensitive
+        /// </summary>
+        public bool CaseSensitive;
     }
 }

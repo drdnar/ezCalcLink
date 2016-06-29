@@ -10,11 +10,12 @@ namespace EzCalcLink
     {
         public static int IndentLevel;
 
-        public static LogType ExcludeLogs = LogType.ExcludeVeryVeryVerbose; //| */LogType.P2 | LogType.P3 | LogType.P4;
+        public static LogType ExcludeLogs = LogType.ExcludeNothing;//LogType.ExcludeVeryVeryVerbose; //| */LogType.P2 | LogType.P3 | LogType.P4;
         
         [Flags]
         public enum LogType
         {
+            ExcludeNothing = 0,
             Basic = 1,
             ExcludeBasic = 0xF,
             Verbose = 3,
