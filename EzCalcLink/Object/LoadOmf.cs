@@ -6,6 +6,32 @@ using System.Threading.Tasks;
 
 namespace EzCalcLink.Object
 {
+    /// <summary>
+    /// Exception thrown where there's an error parsing an OMF file.
+    /// </summary>
+    public class OmfFileParseException : Exception
+    {
+        public readonly int Index;
+
+        public OmfFileParseException(int index)
+        {
+            Index = index;
+        }
+
+        public OmfFileParseException(int index, string message)
+            : base(message)
+        {
+            Index = index;
+        }
+
+        public OmfFileParseException(int index, string message, Exception inner)
+            : base(message, inner)
+        {
+            Index = index;
+        }
+    }
+
+
     public class LoadOmf
     {
         protected ObjectFile Obj = new ObjectFile();
@@ -80,8 +106,8 @@ namespace EzCalcLink.Object
         {
             if (i > 0 && i <= 4)
                 return addressSpaces[i].Value;
-            else
-                throw new IndexOutOfRangeException("Requested context index " + i.ToString() + " is not accepted by parser.");
+            ShowFatalError("Requested context index {0} is not accepted by parser.", i);
+            return null;
         }
 
         /// <summary>
@@ -136,56 +162,308 @@ namespace EzCalcLink.Object
             // Environment Part
             index = PtrToAsw1;
             ParseP1();
+
+            // Section information
+            index = PtrToAsw2;
+            ParseP2();
+        }
+
+        
+        protected void ParseP2()
+        {
+            int n3;
+            DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Parsing P2. . . .");
+            while (WhichPart(index) == 2)
+                if (NextRecordIdIs(0xE6))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Section type (ST): ");
+                    currentSection = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Index: {0}", currentSection);
+
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine("Created new section.");
+                        s = new OmfSection();
+                        s.Index = currentSection;
+                        Sections.Add(s);
+                    }
+                    DebugLogger.Log(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Type: ");
+                    if (NextRecordIdIs(0xC1D3D0))
+                    {
+                        // Normal value?
+                        DebugLogger.LogLine("Absolute code (ASP)");
+                    }
+                    else if (NextRecordIdIs(0xC1D3D2))
+                    {
+                        DebugLogger.LogLine("Absolute ROM data (ASR)");
+                    }
+                    else if (NextRecordIdIs(0xC1D3C4))
+                    {
+                        DebugLogger.LogLine("Absolute data (ASD)");
+                    }
+                    else if (NextRecordIdIs(0xC3D0))
+                    {
+                        DebugLogger.LogLine("Normal code (CP)");
+                    }
+                    else if (NextRecordIdIs(0xC3D2))
+                    {
+                        DebugLogger.LogLine("Normal ROM data (CR)");
+                    }
+                    else if (NextRecordIdIs(0xC3C4))
+                    {
+                        DebugLogger.LogLine("Normal data (CD)");
+                    }
+                    else if (NextRecordIdIs(0xC5C1D0))
+                    {
+                        DebugLogger.LogLine("Common absolute code (EAP)");
+                    }
+                    else if (NextRecordIdIs(0xC5C1D2))
+                    {
+                        DebugLogger.LogLine("Common absolute ROM data (EAR)");
+                    }
+                    else if (NextRecordIdIs(0xC5C1C4))
+                    {
+                        DebugLogger.LogLine("Common absolute data (EAD)");
+                    }
+                    else if (NextRecordIdIs(0xC5DA))
+                    {
+                        DebugLogger.LogLine("Something about short common with error checking.");
+                        return false;
+                    }
+                    else if (NextRecordIdIs(0xCDC1D0))
+                    {
+                        DebugLogger.LogLine("Common absolute code without size constraint thingy (MAP)");
+                    }
+                    else if (NextRecordIdIs(0xCDC1D2))
+                    {
+                        DebugLogger.LogLine("Common absolute ROM data without size constraint thingy (MAR)");
+                    }
+                    else if (NextRecordIdIs(0xCDC1C4))
+                    {
+                        DebugLogger.LogLine("Common absolute data without size constraint thingy (MAD)");
+                    }
+                    else if (NextRecordIdIs(0xDAC3D0))
+                    {
+                        DebugLogger.LogLine("Short code (ZCP)");
+                    }
+                    else if (NextRecordIdIs(0xDAC3D2))
+                    {
+                        DebugLogger.LogLine("Short ROM data (ZCR)");
+                    }
+                    else if (NextRecordIdIs(0xDAC3C4))
+                    {
+                        DebugLogger.LogLine("Short data (ZCD)");
+                    }
+                    else if (NextRecordIdIs(0xDACD))
+                    {
+                        DebugLogger.LogLine("Short common relocatable sections thingies?");
+                        return false;
+                    }
+                    s.Name = ReadString();
+                    DebugLogger.LogLine(" Section name: {0}", s.Name);
+                    s.ParentIndex = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Parent index: {0}", s.ParentIndex);
+                    s.SiblingIndex = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Sibling index: {0}", s.SiblingIndex);
+                    s.ContextIndex = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Context index: {0:X2}: {1}", s.ContextIndex, ResolveContextNameByIndex(s.ContextIndex));
+                }
+                else if (NextRecordIdIs(0xE7))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Section alignment (SA): ");
+                    currentSection = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.AlignmentDivisor = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Boundary alignment divisor: {0}", s.AlignmentDivisor);
+                    if (NextItemIsNumber())
+                        DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
+                }
+                else if (NextRecordIdIs(0xE2D3))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Section size (ASS): ");
+                    currentSection = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.Size = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(" Section size: {0}", s.Size);
+                }
+                else if (NextRecordIdIs(0xE2CC))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Section base address (ASL): ");
+                    currentSection = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.SectionBaseAddress = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Section base address: {0}", s.SectionBaseAddress);
+                }
+                else if (NextRecordIdIs(0xE2D2))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Variable values or section offset? (ASR): ");
+                    currentSection = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", currentSection);
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.Offset = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Section offset: {0:X6}", s.Offset);
+                }
+                else if (NextRecordIdIs(0xFB))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Define context (NC): ");
+                    OmfContext ctx = new OmfContext();
+                    Contexts.Add(ctx);
+                    ctx.Index = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType./*Very*/Verbose | DebugLogger.LogType.FieldValue,
+                        " Context index: 0x{0:X2}", ctx.Index);
+                    ctx.Name = ReadString();
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Context name: {0}", ctx.Name);
+                    if (NextItemIsNumber())
+                    {
+                        ctx.UnknownData = ReadNumber(out isEscapedValue);
+                        DebugLogger.LogLine(" Context unknown data: {0:X2}", ctx.UnknownData);
+                        ctx.Id = ReadNumber(out isEscapedValue);
+                        DebugLogger.LogLine(" Context ID: {0:X2}", ctx.Id);
+                    }
+                }
+                else if (NextRecordIdIs(0xE2C1))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Physical region size (ASA): ");
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Region size: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
+                    //return false;
+                }
+                else if (NextRecordIdIs(0xE2C2))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Physical region base address (ASB): ");
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Address: {0:X6}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
+                    //return false;
+                }
+                else if (NextRecordIdIs(0xE2C6))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "MAU size (ASF): ");
+                    currentSection = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", ReadNumber(out isEscapedValue));
+                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
+                    if (s == null)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
+                        throw new FormatException();
+                    }
+                    s.MauSize = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " MAU size: {0}", s.MauSize);
+                }
+                else if (NextRecordIdIs(0xE2CD))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "M-Value (ASM): ");
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " M-Value: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
+                    //return false;
+                }
+                else if (NextRecordIdIs(0xE5)) // Apparently, this is legal?
+                {
+                    currentSection = ReadNumber(out isEscapedValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Current section index (SB): {0}", currentSection);
+                }
+                else
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown record ID.");
+                    for (int i = 0; i < 32; i++)
+                        DebugLogger.Log("{0:X2}", file[index + i]);
+                    DebugLogger.LogLine();
+                    return false;
+                }
+            return true;
         }
 
 
         protected void ParseP1()
         {
             int n3;
-
+            DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Parsing P1. . . .");
             while (WhichPart(index) == 1)
                 if (NextRecordIdIs(0xF0))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Record F0, Variable Attributes (NN)");
-                    n3 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Version: {0}", n3);
-                    EnvironmentPart.NnRecords.Add(n3, ReadString());
-                    DebugLogger.LogLine(" ID: {0}", EnvironmentPart.NnRecords[n3]);
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Version: {0}", ReadNumber());
+                    DebugLogger.LogLine(" ID: {0}", ReadString());
                 }
                 else if (NextRecordIdIs(0xF1CE))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Record F1CE, Variable Attributes (ATN)");
-                    n3 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Symbol name index: {0}", n3);
-                    if (!EnvironmentPart.NnRecords.ContainsKey(n3))
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR: No matching NN record!");
-                        return false;
-                    }
-                    DebugLogger.LogLine(" Should be zero: {0}", ReadNumber(out isEscapedValue));
-                    n3 = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Symbol name index: {0}", ReadNumber());
+                    DebugLogger.LogLine(" Should be zero: {0}", ReadNumber());
+                    n3 = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                         " Attribute definition: {0}, ", n3);
                     switch (n3)
                     {
                         case 50:
-                            DebugLogger.Log("Creation date and time: ");
-                            EnvironmentPart.DateTime = new DateTime(ReadNumber(out isEscapedValue) + 1900, ReadNumber(out isEscapedValue),
-                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
-                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue));
-                            DebugLogger.LogLine(EnvironmentPart.DateTime.ToString());
+                            DebugLogger.LogLine("Creation date and time: {0}", new DateTime(ReadNumber() + 1900, ReadNumber(), ReadNumber(), ReadNumber(), ReadNumber(), ReadNumber()));
                             break;
                         case 51:
-                            DebugLogger.Log("Creation command line: ");
-                            EnvironmentPart.CommandLine = ReadString();
-                            DebugLogger.LogLine(EnvironmentPart.CommandLine);
+                            DebugLogger.LogLine("Creation command line: {0}", ReadString());
                             break;
                         case 52:
-                            n3 = ReadNumber(out isEscapedValue);
+                            n3 = ReadNumber();
                             DebugLogger.Log("Execution status: {0}", n3);
                             switch (n3)
                             {
@@ -203,13 +481,12 @@ namespace EzCalcLink.Object
                                     break;
                                 default:
                                     DebugLogger.LogLine(DebugLogger.LogType.Error, ": Unknown");
-                                    return false;
+                                    break;
                             }
-                            EnvironmentPart.ExecutionStatus = (ExecutionStatus)n3;
                             break;
                         case 53:
                             DebugLogger.Log("Host environment: ");
-                            n3 = ReadNumber(out isEscapedValue);
+                            n3 = ReadNumber();
                             DebugLogger.Log(n3.ToString());
                             switch (n3)
                             {
@@ -230,57 +507,36 @@ namespace EzCalcLink.Object
                                     break;
                                 default:
                                     DebugLogger.LogLine(": Unknown");
-                                    return false;
+                                    break;
                             }
-                            EnvironmentPart.HostEnvironment = (HostEnvironment)n3;
                             break;
                         case 54:
                             DebugLogger.LogLine("Tool version information");
-                            EnvironmentPart.ToolNumber = ReadNumber(out isEscapedValue);
-                            DebugLogger.LogLine("  Tool number: {0}", EnvironmentPart.ToolNumber);
-                            EnvironmentPart.ToolVersion = ReadNumber(out isEscapedValue);
-                            DebugLogger.LogLine("  Tool {0}", EnvironmentPart.ToolVersion);
-                            EnvironmentPart.ToolRevision = ReadNumber(out isEscapedValue);
-                            DebugLogger.LogLine("  Tool {0}", EnvironmentPart.ToolRevision);
+                            DebugLogger.LogLine("  Tool number: {0}", ReadNumber());
+                            DebugLogger.LogLine("  Tool {0}", ReadNumber());
+                            DebugLogger.LogLine("  Tool {0}", ReadNumber());
                             if (file[index] >= 0xC1 && file[index] <= 0xDA)
-                            {
-                                EnvironmentPart.ToolLetter = (char)(file[index++] - 0xC1 + (int)'A');
-                                DebugLogger.LogLine("  Tool letter: {0}", EnvironmentPart.ToolLetter);
-                            }
+                                DebugLogger.LogLine("  Tool letter: {0}", (char)(file[index++] - 0xC1 + (int)'A'));
                             break;
                         case 55:
-                            DebugLogger.Log("Comments: ");
-                            EnvironmentPart.Comments = ReadString();
-                            DebugLogger.LogLine(EnvironmentPart.Comments);
+                            DebugLogger.Log("Comments: {0}", ReadString());
                             break;
                         case 56:
-                            EnvironmentPart.IDontKnow = ReadNumber(out isEscapedValue);
-                            DebugLogger.LogLine("I dunno: {0}: Total mystery.", EnvironmentPart.IDontKnow);
+                            DebugLogger.LogLine("I dunno: {0}: Total mystery.", ReadNumber());
                             break;
                         default:
-                            DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown field.");
-                            for (int i = 0; i < 32; i++)
-                                DebugLogger.Log("{0:X2}", file[index++]);
-                            DebugLogger.LogLine();
-                            return false;
+                            ShowError("P1: Unknown attribute.");
+                            return;
                     }
 
                 }
                 else if (NextRecordIdIs(0xE2CE))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, 
-                        "Record E2CE.  Wonder what it means.");
-                    for (int i = 0; i < 32; i++)
-                        DebugLogger.Log("{0:X2}", file[index++]);
-                    return false;
+                    ShowFatalError("P1: Record E2CE: I don't know what this is for.");
                 }
                 else
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown field.");
-                    for (int i = 0; i < 32; i++)
-                        DebugLogger.Log("{0:X2}", file[index++]);
-                    DebugLogger.LogLine();
-                    return false;
+                    ShowFatalError("P1: Unknown or unexpected field.");
                 }
         }
 
@@ -373,15 +629,11 @@ namespace EzCalcLink.Object
                 }
                 else if (NextRecordIdIs(0xE2CE))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.FatalError, "Record E2CE.  Wonder what it means.");
-                    for (int i = 0; i < 32; i++)
-                        DebugLogger.Log("{0:X2} ", file[index++]);
-                    throw new FormatException("OMF parse: Unknown field E2CE");
+                    ShowFatalError("P0: Record E2CE: I don't know what this is for.");
                 }
                 else
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.FatalError, "Unknown field.");
-                    throw new FormatException("OMF parse: Unknown field");
+                    ShowFatalError("P0: Unknown or unexpected field.");
                 }
         }
 
@@ -390,9 +642,7 @@ namespace EzCalcLink.Object
         {
             if (!NextRecordIdIs(0xE0))
             {
-                DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FatalError,
-                    "ERROR! File does not begin with record 0xE0 (Module Beginning).");
-                throw new FormatException("File parse error.");
+                ShowFatalError("File does not begin with record 0xE0 (Module Beginning).");
             }
             DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Parsing header. . . .");
             DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVerbose, "Processor: {0}", ReadString());
@@ -403,22 +653,13 @@ namespace EzCalcLink.Object
                     DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.VeryVerbose, "Address Descriptor (AD)");
                     int BitsPerMau = ReadNumber();
                     if (BitsPerMau != 8)
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FatalError, "Bad byte size: {0}", BitsPerMau);
-                        throw new FormatException("OMF parse: Bits per MAU not 8.");
-                    }
+                        ShowFatalError("Bad byte size: {0}", BitsPerMau);
                     int MausPerAddress = ReadNumber();
-                    if (MausPerAddress != 3)
-                    {
-                        // TODO: Short mode support
-                        DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FatalError, "Bad word size: {0} (only long mode supported; no Z80 mode support)", MausPerAddress);
-                        throw new FormatException("OMF parse: Word size not 3.");
-                    }
+                    if (MausPerAddress != 3) // TODO: Short mode support
+                        ShowFatalError("Bad word size: {0} (only long mode supported; no Z80 mode support)", MausPerAddress);
                     if (file[index] == 0xCD)
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FatalError, "File claims to be big-endian! (Not valid for Z80s.)");
-                        throw new FormatException("OMF parse: Big-endian file");
-                    }
+                        ShowFatalError("File claims to be big-endian! (Not valid for Z80s.)");
+                    DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.VeryVeryVerbose, " (Validated for eZ80)");
                 }
                 else if (NextRecordIdIs(0xE2D7))
                 {
@@ -460,12 +701,71 @@ namespace EzCalcLink.Object
                 }
                 else
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.Error, "Unknown or unexpected field!");
-                    DebugLogger.Log(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVerbose, "");
-                    for (int i = 0; i < 32; i++)
-                        DebugLogger.Log("{0:X2}", file[index + i]);
-                    DebugLogger.LogLine();
+                    ShowError("Header: Unknown or unexpected field!");
                 }
+        }
+        
+
+        /// <summary>
+        /// Does a debug log dump of the bytes around the current file read index.
+        /// </summary>
+        protected void DoHexDump()
+        {
+            DebugLogger.Log(DebugLogger.LogType.Error | DebugLogger.LogType.Verbose, "Hex dump starting at 0x{0:X8}: ", index >= 16 ? index - 16 : 0);
+            for (int i = index >= 16 ? -16 : -index; i < 16; i++)
+                if (i == 0) // Highlight index where dump is centered
+                    DebugLogger.Log(" {0:X2} ", file[index + i]);
+                else
+                    DebugLogger.Log("{0:X2}", file[index + i]);
+            DebugLogger.LogLine();
+        }
+
+
+        /// <summary>
+        /// Shows an error message, a hex dump, but allows parsing to continue.
+        /// </summary>
+        /// <param name="message"></param>
+        protected void ShowError(string message)
+        {
+            DebugLogger.LogLine(DebugLogger.LogType.Error, "OMF parse error at 0x{0:X8}: {1}", index, message);
+            DoHexDump();
+        }
+
+
+        /// <summary>
+        /// Shows an error message, a hex dump, but allows parsing to continue.
+        /// </summary>
+        /// <param name="message"></param>
+        protected void ShowError(string message, params object[] args)
+        {
+            DebugLogger.Log(DebugLogger.LogType.Error, "OMF parse error at 0x{0:X8}: ", index);
+            DebugLogger.LogLine(message, args);
+            DoHexDump();
+        }
+
+
+        /// <summary>
+        /// Shows an error message, a hex dump, and throws an OmfFileParseException to abort parsing.
+        /// </summary>
+        /// <param name="message"></param>
+        protected void ShowFatalError(string message)
+        {
+            DebugLogger.LogLine(DebugLogger.LogType.FatalError, "OMF parse fatal error at 0x{0:X8}: {1}", index, message);
+            DoHexDump();
+            throw new OmfFileParseException(index, message);
+        }
+
+
+        /// <summary>
+        /// Shows an error message, a hex dump, and throws an OmfFileParseException to abort parsing.
+        /// </summary>
+        /// <param name="message"></param>
+        protected void ShowFatalError(string message, params object[] args)
+        {
+            DebugLogger.Log(DebugLogger.LogType.FatalError, "OMF parse fatal error at 0x{0:X8}: ", index);
+            DebugLogger.LogLine(message, args);
+            DoHexDump();
+            throw new OmfFileParseException(index, string.Format(message, args));
         }
 
 
@@ -599,7 +899,7 @@ namespace EzCalcLink.Object
             if (b == 0x80)
                 return 0;
             if (b >= 0x89)
-                throw new InvalidOperationException("ReadNumber expected a number, did not get a number. Index: " + index.ToString("X8") + ", value: " + b.ToString("X2"));
+                ShowFatalError("ReadNumber expected a number, did not get a number.");
             r = file[index++];
             if (b == 0x81)
                 return r;
@@ -613,6 +913,7 @@ namespace EzCalcLink.Object
             if (b == 0x84)
                 return r;
             // Don't handle extra-large ints
+            ShowFatalError("ReadNumber got giant integer.");
             return -1;
         }
 
@@ -626,7 +927,9 @@ namespace EzCalcLink.Object
             if (b <= 0x80)
                 return;
             if (b >= 0x89)
-                throw new InvalidOperationException("ReadNumber/SkipNumber expected a number, did not get a number. Index: " + index.ToString("X8") + ", value: " + b.ToString("X2"));
+                ShowFatalError("ReadNumber/SkipNumber expected a number, did not get a number.");
+            if (b >= 0x85)
+                ShowFatalError("ReadNumber/SkinNumber got giant integer.");
             index += b & 0x0F;
         }
         #endregion
