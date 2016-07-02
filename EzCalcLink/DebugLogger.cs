@@ -17,13 +17,13 @@ namespace EzCalcLink
         {
             ExcludeNothing = 0,
             Basic = 1,
-            ExcludeBasic = 0xF,
+            ExcludeBasic = 0x2000F,
             Verbose = 3,
-            ExcludeVerbose = 0xE,
+            ExcludeVerbose = 0x2000E,
             VeryVerbose = 7,
-            ExcludeVeryVerbose = 0xC, 
+            ExcludeVeryVerbose = 0x2000C, 
             VeryVeryVerbose = 15,
-            ExcludeVeryVeryVerbose = 0x8,
+            ExcludeVeryVeryVerbose = 0x20008,
             P0 = 0x10,
             P1 = 0x20,
             P2 = 0x40,
@@ -37,6 +37,8 @@ namespace EzCalcLink
             FileHeader = 0x4000,
             Error = 0x8000,
             FatalError = 0x10000,
+            VeryHighlyVerbose = 0x2000F,
+            ExcludeVeryHighlyVerbose = 0x20000,
         }
 
         public static LogType CurrentLogType = LogType.Basic | LogType.FieldHeader;
@@ -97,12 +99,14 @@ namespace EzCalcLink
         {
             if (MaskContains(LogType.Error) || MaskContains(LogType.FatalError))
                 Console.ForegroundColor = ConsoleColor.Red;
-            else if (MaskContains(LogType.ExcludeVeryVeryVerbose))
+            else if (MaskContains(LogType.ExcludeVeryHighlyVerbose))
                 Console.ForegroundColor = ConsoleColor.DarkGray;
-            else if (MaskContains(LogType.ExcludeVeryVerbose))
+            else if (MaskContains(LogType.ExcludeVeryVeryVerbose))
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
-            else if (MaskContains(LogType.ExcludeVerbose))
+            else if (MaskContains(LogType.ExcludeVeryVerbose))
                 Console.ForegroundColor = ConsoleColor.Cyan;
+            else if (MaskContains(LogType.ExcludeVerbose))
+                Console.ForegroundColor = ConsoleColor.Gray;
             else
                 Console.ForegroundColor = ConsoleColor.White;
         }

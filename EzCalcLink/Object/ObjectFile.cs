@@ -24,7 +24,7 @@ namespace EzCalcLink.Object
         /// <summary>
         /// Contains a list of different sections
         /// </summary>
-        public List<Section> Section = new List<Section>();
+        public List<Section> Sections = new List<Section>();
 
         /// <summary>
         /// Contains a list of all symbols

@@ -26,6 +26,13 @@ namespace EzCalcLink.Object
         /// </summary>
         public List<ContiguousMemory> Data = new List<ContiguousMemory>();
 
+
+        /// <summary>
+        /// Indicates whether the section is known to be relocatable.
+        /// </summary>
+        public bool Relocatable = false;
+
+
         /// <summary>
         /// Contains a list of all relocations found in the file
         /// </summary>
@@ -34,7 +41,8 @@ namespace EzCalcLink.Object
         /// <summary>
         /// For a statically linked object file, returns the final address this
         /// section will live at. For a dynamically linked file, returns the
-        /// offset from the start of the section's final start address.
+        /// offset from the start of the section's final start address. (Used
+        /// when collating sections from different object files.)
         /// </summary>
         public int BaseAddress;
 
@@ -75,5 +83,11 @@ namespace EzCalcLink.Object
                 return Memory.Size;
             }
         }
+
+
+        /// <summary>
+        /// Notation for assisting with parsing
+        /// </summary>
+        public int ExpectedSize;
     }
 }

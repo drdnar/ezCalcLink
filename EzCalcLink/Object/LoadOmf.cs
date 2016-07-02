@@ -110,6 +110,19 @@ namespace EzCalcLink.Object
             return null;
         }
 
+
+        /// <summary>
+        /// List of sections, with the key as the index number.
+        /// </summary>
+        protected Dictionary<int, Section> sections = new Dictionary<int, Section>();
+
+
+        /// <summary>
+        /// List of symbols, with the key as the index number.
+        /// </summary>
+        protected Dictionary<int, Symbol> symbols = new Dictionary<int, Symbol>();
+
+
         /// <summary>
         /// Internal array of pointers to various parts.  Used only for the WhichPart() function.
         /// </summary>
@@ -153,306 +166,350 @@ namespace EzCalcLink.Object
             foreach (KeyValuePair<int, AddressSpace> k in addressSpaces)
                 Obj.AddressSpaces.Add(k.Value);
             // Parse file
+            DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing header. . . .");
+            DebugLogger.Indent();
             ParseHeader();
+            DebugLogger.Unindent();
 
             // AD Extension Part
             index = PtrToAsw0;
+            DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing P0. . . .");
+            DebugLogger.Indent();
             ParseP0();
+            DebugLogger.Unindent();
 
             // Environment Part
             index = PtrToAsw1;
+            DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing P1. . . .");
+            DebugLogger.Indent();
             ParseP1();
+            DebugLogger.Unindent();
 
             // Section information
             index = PtrToAsw2;
+            DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing P2. . . .");
+            DebugLogger.Indent();
             ParseP2();
+            DebugLogger.Unindent();
+
+            // Symbols
+            index = PtrToAsw3;
+            DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing P3. . . .");
+            DebugLogger.Indent();
+            ParseP3();
+            DebugLogger.Unindent();
+
+
+            // Copy section list to output object
+            foreach (KeyValuePair<int, Section> s in sections)
+                Obj.Sections.Add(s.Value);
+            // Copy symbol list to output object
+            foreach (KeyValuePair<int, Symbol> s in symbols)
+                Obj.Symbols.Add(s.Value);
         }
 
         
+        protected void ParseP3()
+        {
+            int n1, n2, n3;
+            while (WhichPart(index) == 3)
+                if (NextRecordIdIs(0xE8))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Public (external) symbol (NI)");
+                    n1 = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Public name index record: {0}", n1);
+                    if (symbols.ContainsKey(n1))
+                        ShowFatalError("NI: Symbol index {0} already used.", n1);
+                    Symbol s = new Symbol();
+                    s.External = false;
+                    s.ObjectFile = Obj;
+                    s.Section = sections[currentSection];
+                    s.Name = ReadString();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Symbol name: {0}", s.Name);
+                    symbols[n1] = s;
+                }
+                else if (NextRecordIdIs(0xF1C9))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Variable attribute (ATI)");
+                    n1 = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Symbol name index: {0}", n1);
+                    Symbol s = symbols[n1];
+                    n2 = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Symbol type index: {0}", n2);
+                    if (n2 != 0)
+                        DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Basic | DebugLogger.LogType.FieldValue,
+                            " P3 ATI record: Well, isn't this interesting! A non-zero symbol type index: {0}", n2);
+                    n3 = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Attribute definition: {0}", n3);
+                    if (n3 != 19)
+                        DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Basic | DebugLogger.LogType.FieldValue,
+                            " P3 ATI record: Well, isn't this interesting! Attribute definition is not 19: {0}", n3);
+                    s.AddressSpace = GetAddressSpaceById(ReadNumber());
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Address space: {0}", s.AddressSpace.Name);
+                }
+                else if (NextRecordIdIs(0xE2C9))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Variable values (ASI)");
+                    n1 = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Symbol index: {0}", n1);
+                    Symbol s = symbols[n1];
+                    if (NextItemIsNumber())
+                    {
+                        s.Offset = ReadNumber();
+                        s.Resolved = true;
+                        DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                            " Symbol value: 0x{0:X6}", s.Offset);
+                    }
+                    else
+                    {
+                        s.Resolved = false;
+                        // I'm hard-coding the parser for relocatable symbol expressions to keep things a bit more simple.
+                        if (file[index++] != 0xD2) // 'R' variable ID
+                            ShowFatalError("Relocatable symbol value expression parse error: Did not get expected section variable specifier.");
+                        if (!NextItemIsNumber())
+                            ShowFatalError("Relocatable symbol value expression parse error: Did not get a number as the expected argument to R-variable.");
+                        if ((n2 = ReadNumber()) != currentSection)
+                            ShowFatalError("Relocatable symbol value expression parse error: Expected R-variable section reference ({0}) to match current section ({1}).", n2, currentSection);
+                        if (file[index] == 0x90) // Ignore comma entity
+                            index++;
+                        s.Offset = ReadNumber();
+                        if (file[index] == 0x90) // Ignore comma entity
+                            index++;
+                        if (file[index++] != 0xA5) // Add function
+                            ShowFatalError("Relocatable symbol value expression parse error: Expression did not end with expected add function.");
+                        DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                            " Symbol value: Base of section {0} + 0x{1:X6}", s.Section.Name, s.Offset);
+                    }
+
+                }
+                //else if (NextRecordIdIs(0xE2D2)) Should not be used
+                else if (NextRecordIdIs(0xE9))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "External reference name (NX)");
+                    n1 = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " External reference index: {0}", n1);
+                    if (symbols.ContainsKey(n1))
+                        ShowFatalError("NX: Symbol index {0} already used.", n1);
+                    Symbol s = new Symbol();
+                    s.External = true;
+                    s.ObjectFile = Obj;
+                    s.Name = ReadString();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
+                        " Symbol name: {0}", s.Name);
+                    symbols[n1] = s;
+                }
+                //else if (NextRecordIdIs(0xF1D8)) Zilog doesn't appear to use these.
+                //else if (NextRecordIdIs(0xF4))
+                else if (NextRecordIdIs(0xE5))
+                {
+                    currentSection = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Set current section: {0}", currentSection);
+                }
+                else
+                {
+                    ShowFatalError("P3: Unknown or unexpected field.");
+                }
+        }
+
+
         protected void ParseP2()
         {
             int n3;
-            DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Parsing P2. . . .");
             while (WhichPart(index) == 2)
                 if (NextRecordIdIs(0xE6))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section type (ST): ");
                     currentSection = ReadNumber();
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Index: {0}", currentSection);
-
-                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
-                    if (s == null)
-                    {
-                        DebugLogger.LogLine("Created new section.");
-                        s = new OmfSection();
-                        s.Index = currentSection;
-                        Sections.Add(s);
-                    }
+                    if (sections.ContainsKey(currentSection))
+                        ShowFatalError("ST record for already-defined section index #{0}", currentSection);
+                    Section s = new Section();
+                    sections[currentSection] = s;
                     DebugLogger.Log(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Type: ");
-                    if (NextRecordIdIs(0xC1D3D0))
+                    if (NextRecordIdIs(0xC1D3D0)) // Normal value?
                     {
-                        // Normal value?
                         DebugLogger.LogLine("Absolute code (ASP)");
+                        s.Relocatable = false;
                     }
-                    else if (NextRecordIdIs(0xC1D3D2))
-                    {
-                        DebugLogger.LogLine("Absolute ROM data (ASR)");
-                    }
+                    /*else if (NextRecordIdIs(0xC1D3D2)) DebugLogger.LogLine("Absolute ROM data (ASR)");*/
                     else if (NextRecordIdIs(0xC1D3C4))
                     {
                         DebugLogger.LogLine("Absolute data (ASD)");
+                        s.Relocatable = false;
                     }
-                    else if (NextRecordIdIs(0xC3D0))
-                    {
-                        DebugLogger.LogLine("Normal code (CP)");
-                    }
-                    else if (NextRecordIdIs(0xC3D2))
-                    {
-                        DebugLogger.LogLine("Normal ROM data (CR)");
-                    }
+                    /*else if (NextRecordIdIs(0xC3D0)) DebugLogger.LogLine("Normal code (CP)");
+                    else if (NextRecordIdIs(0xC3D2)) DebugLogger.LogLine("Normal ROM data (CR)");*/
                     else if (NextRecordIdIs(0xC3C4))
                     {
                         DebugLogger.LogLine("Normal data (CD)");
+                        s.Relocatable = false;
                     }
-                    else if (NextRecordIdIs(0xC5C1D0))
-                    {
-                        DebugLogger.LogLine("Common absolute code (EAP)");
-                    }
-                    else if (NextRecordIdIs(0xC5C1D2))
-                    {
-                        DebugLogger.LogLine("Common absolute ROM data (EAR)");
-                    }
-                    else if (NextRecordIdIs(0xC5C1C4))
-                    {
-                        DebugLogger.LogLine("Common absolute data (EAD)");
-                    }
-                    else if (NextRecordIdIs(0xC5DA))
-                    {
-                        DebugLogger.LogLine("Something about short common with error checking.");
-                        return false;
-                    }
-                    else if (NextRecordIdIs(0xCDC1D0))
-                    {
-                        DebugLogger.LogLine("Common absolute code without size constraint thingy (MAP)");
-                    }
-                    else if (NextRecordIdIs(0xCDC1D2))
-                    {
-                        DebugLogger.LogLine("Common absolute ROM data without size constraint thingy (MAR)");
-                    }
-                    else if (NextRecordIdIs(0xCDC1C4))
-                    {
-                        DebugLogger.LogLine("Common absolute data without size constraint thingy (MAD)");
-                    }
-                    else if (NextRecordIdIs(0xDAC3D0))
-                    {
-                        DebugLogger.LogLine("Short code (ZCP)");
-                    }
-                    else if (NextRecordIdIs(0xDAC3D2))
-                    {
-                        DebugLogger.LogLine("Short ROM data (ZCR)");
-                    }
-                    else if (NextRecordIdIs(0xDAC3C4))
-                    {
-                        DebugLogger.LogLine("Short data (ZCD)");
-                    }
-                    else if (NextRecordIdIs(0xDACD))
-                    {
-                        DebugLogger.LogLine("Short common relocatable sections thingies?");
-                        return false;
-                    }
+                    /*else if (NextRecordIdIs(0xC5C1D0)) DebugLogger.LogLine("Common absolute code (EAP)");
+                    else if (NextRecordIdIs(0xC5C1D2)) DebugLogger.LogLine("Common absolute ROM data (EAR)");
+                    else if (NextRecordIdIs(0xC5C1C4)) DebugLogger.LogLine("Common absolute data (EAD)");
+                    else if (NextRecordIdIs(0xC5DA)) DebugLogger.LogLine("Something about short common with error checking.");
+                    else if (NextRecordIdIs(0xCDC1D0)) DebugLogger.LogLine("Common absolute code without size constraint thingy (MAP)");
+                    else if (NextRecordIdIs(0xCDC1D2)) DebugLogger.LogLine("Common absolute ROM data without size constraint thingy (MAR)");
+                    else if (NextRecordIdIs(0xCDC1C4)) DebugLogger.LogLine("Common absolute data without size constraint thingy (MAD)");
+                    else if (NextRecordIdIs(0xDAC3D0)) DebugLogger.LogLine("Short code (ZCP)");
+                    else if (NextRecordIdIs(0xDAC3D2)) DebugLogger.LogLine("Short ROM data (ZCR)");
+                    else if (NextRecordIdIs(0xDAC3C4)) DebugLogger.LogLine("Short data (ZCD)");
+                    else if (NextRecordIdIs(0xDACD)) DebugLogger.LogLine("Short common relocatable sections thingies?");*/
+                    else
+                        ShowFatalError("Unexpected/unknown section type.");
                     s.Name = ReadString();
                     DebugLogger.LogLine(" Section name: {0}", s.Name);
-                    s.ParentIndex = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Parent index: {0}", s.ParentIndex);
-                    s.SiblingIndex = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(" Sibling index: {0}", s.SiblingIndex);
-                    s.ContextIndex = ReadNumber(out isEscapedValue);
+                        " Parent index: {0}", ReadNumber());
+                    DebugLogger.LogLine(" Sibling index: {0}", ReadNumber());
+                    n3 = ReadNumber();
+                    if (n3 < 5)
+                        s.AddressSpace = GetAddressSpaceByIndex(n3);
+                    else
+                        s.AddressSpace = GetAddressSpaceById(n3);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Context index: {0:X2}: {1}", s.ContextIndex, ResolveContextNameByIndex(s.ContextIndex));
+                        " Context index/Address space: {0:X2}: {1}", n3, s.AddressSpace.Name);
                 }
                 else if (NextRecordIdIs(0xE7))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Section alignment (SA): ");
-                    currentSection = ReadNumber(out isEscapedValue);
+                    currentSection = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", currentSection);
-                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
-                    if (s == null)
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
-                        throw new FormatException();
-                    }
-                    s.AlignmentDivisor = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Boundary alignment divisor: {0}", s.AlignmentDivisor);
+                    DebugLogger.LogLine(" Boundary alignment divisor: {0}", ReadNumber());
                     if (NextItemIsNumber())
-                        DebugLogger.LogLine(" Page size: {0}", ReadNumber(out isEscapedValue));
+                        DebugLogger.LogLine(" Page size: {0}", ReadNumber());
                 }
                 else if (NextRecordIdIs(0xE2D3))
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section size (ASS): ");
-                    currentSection = ReadNumber(out isEscapedValue);
+                    currentSection = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", currentSection);
-                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
-                    if (s == null)
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
-                        throw new FormatException();
-                    }
-                    s.Size = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(" Section size: {0}", s.Size);
+                    if (!sections.ContainsKey(currentSection))
+                        ShowFatalError("ASS record: Section #{0} not yet defined.", currentSection);
+                    Section s = sections[currentSection];
+                    s.ExpectedSize = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader, 
+                        " Section (expected) size: {0}", s.ExpectedSize);
                 }
                 else if (NextRecordIdIs(0xE2CC))
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Section base address (ASL): ");
-                    currentSection = ReadNumber(out isEscapedValue);
+                    currentSection = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", currentSection);
-                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
-                    if (s == null)
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
-                        throw new FormatException();
-                    }
-                    s.SectionBaseAddress = ReadNumber(out isEscapedValue);
+                    if (!sections.ContainsKey(currentSection))
+                        ShowFatalError("ASL record: Section #{0} not yet defined.", currentSection);
+                    Section s = sections[currentSection];
+                    s.BaseAddress = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Section base address: {0}", s.SectionBaseAddress);
+                        " Section base address: 0x{0:X6}", s.BaseAddress);
                 }
                 else if (NextRecordIdIs(0xE2D2))
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
-                        "Variable values or section offset? (ASR): ");
-                    currentSection = ReadNumber(out isEscapedValue);
+                        "Section offset (ASR): ");
+                    currentSection = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0}", currentSection);
-                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
-                    if (s == null)
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
-                        throw new FormatException();
-                    }
-                    s.Offset = ReadNumber(out isEscapedValue);
+                    if (!sections.ContainsKey(currentSection))
+                        ShowFatalError("ASR record: Section #{0} not yet defined.", currentSection);
+                    Section s = sections[currentSection];
+                    s.BaseAddress = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Section offset: {0:X6}", s.Offset);
+                        " Section base address/offset: 0x{0:X6}", s.BaseAddress);
                 }
                 else if (NextRecordIdIs(0xFB))
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Define context (NC): ");
-                    OmfContext ctx = new OmfContext();
-                    Contexts.Add(ctx);
-                    ctx.Index = ReadNumber(out isEscapedValue);
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType./*Very*/Verbose | DebugLogger.LogType.FieldValue,
-                        " Context index: 0x{0:X2}", ctx.Index);
-                    ctx.Name = ReadString();
+                    int contextIndex = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Context index: 0x{0:X2}", contextIndex);
+                    if (contextIndex < 1 || contextIndex > 4)
+                        ShowFatalError("NC: Context index {0} is not expected from Zilog OMF file.", contextIndex);
+                    string contextName = ReadString();
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Context name: {0}", ctx.Name);
-                    if (NextItemIsNumber())
-                    {
-                        ctx.UnknownData = ReadNumber(out isEscapedValue);
-                        DebugLogger.LogLine(" Context unknown data: {0:X2}", ctx.UnknownData);
-                        ctx.Id = ReadNumber(out isEscapedValue);
-                        DebugLogger.LogLine(" Context ID: {0:X2}", ctx.Id);
-                    }
+                        " Context name: {0}", contextName);
+                    if (addressSpaces[contextIndex].Value.Name.CompareTo(contextName) != 0)
+                        ShowFatalError("NC: Context #{0} name given ({1}) does not match expected Zilog name ({2}).", contextIndex, contextName, addressSpaces[contextIndex].Value.Name);
+                    if (!NextItemIsNumber())
+                        ShowFatalError("NC: Zilog puts extra fields here that were not supplied.");
+                    int unknown = ReadNumber();
+                    DebugLogger.LogLine(" Context unknown data: 0x{0:X2}", unknown);
+                    int contextId = ReadNumber();
+                    DebugLogger.LogLine(" Context ID: 0x{0:X2}", contextId);
+                    if (addressSpaces[contextIndex].Key != contextId)
+                        ShowFatalError("NC: Expected context ID (0x{0:X2}) does not match expected Zilog ID (0x{1:X2}).", contextId, addressSpaces[contextIndex].Key);
                 }
+                /* Omitted due to not being part of Zilog's standard.
                 else if (NextRecordIdIs(0xE2C1))
-                {
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
-                        "Physical region size (ASA): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Region size: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
-                    //return false;
-                }
-                else if (NextRecordIdIs(0xE2C2))
-                {
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
-                        "Physical region base address (ASB): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " Address: {0:X6}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
-                    //return false;
-                }
+                else if (NextRecordIdIs(0xE2C2))*/
                 else if (NextRecordIdIs(0xE2C6))
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "MAU size (ASF): ");
-                    currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
-                    OmfSection s = Sections.Where(x => x.Index == currentSection).FirstOrDefault();
-                    if (s == null)
-                    {
-                        DebugLogger.LogLine(DebugLogger.LogType.Error, "ERROR! Section not found.");
-                        throw new FormatException();
-                    }
-                    s.MauSize = ReadNumber(out isEscapedValue);
+                        " Section index: {0}", ReadNumber());
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " MAU size: {0}", s.MauSize);
+                        " MAU size: 0x{0:X2}", ReadNumber());
                 }
-                else if (NextRecordIdIs(0xE2CD))
-                {
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
-                        "M-Value (ASM): ");
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Section index: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
-                        " M-Value: {0}", ReadNumber(out isEscapedValue));
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Parser not programmed to use this field's information.  Fixme!");
-                    //return false;
-                }
-                else if (NextRecordIdIs(0xE5)) // Apparently, this is legal?
+                /* Omitted due to not being part of Zilog's standard.
+                else if (NextRecordIdIs(0xE2CD)) */
+                /*else if (NextRecordIdIs(0xE5)) // Apparently, this is legal?
                 {
                     currentSection = ReadNumber(out isEscapedValue);
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Current section index (SB): {0}", currentSection);
-                }
+                }*/
                 else
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown record ID.");
-                    for (int i = 0; i < 32; i++)
-                        DebugLogger.Log("{0:X2}", file[index + i]);
-                    DebugLogger.LogLine();
-                    return false;
+                    ShowFatalError("P2: Unknown or unexpected field.");
                 }
-            return true;
         }
 
 
         protected void ParseP1()
         {
             int n3;
-            DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Parsing P1. . . .");
             while (WhichPart(index) == 1)
                 if (NextRecordIdIs(0xF0))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
-                        "Record F0, Variable Attributes (NN)");
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Variable Attributes (NN)");
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Version: {0}", ReadNumber());
                     DebugLogger.LogLine(" ID: {0}", ReadString());
                 }
                 else if (NextRecordIdIs(0xF1CE))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
-                        "Record F1CE, Variable Attributes (ATN)");
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Variable Attributes (ATN)");
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Symbol name index: {0}", ReadNumber());
                     DebugLogger.LogLine(" Should be zero: {0}", ReadNumber());
                     n3 = ReadNumber();
-                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Attribute definition: {0}, ", n3);
                     switch (n3)
                     {
@@ -544,27 +601,27 @@ namespace EzCalcLink.Object
         protected void ParseP0()
         {
             int n3;
-            DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Parsing P0. . . .");
             while (WhichPart(index) == 0)
                 if (NextRecordIdIs(0xF0))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
-                        "Record F0, Variable Attributes (NN)");
+                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Variable Attributes (NN)");
                     n3 = ReadNumber();
-                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Version: {0}", n3);
                     DebugLogger.LogLine(" ID: {0}", ReadString());
                 }
                 else if (NextRecordIdIs(0xF1CE))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldHeader,
-                        "Record F1CE, Variable Attributes (ATN)");
+                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Variable Attributes (ATN)");
                     n3 = ReadNumber();
-                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P0 | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                         " Symbol name index: {0}", n3);
                     DebugLogger.LogLine(" Should be zero: {0}", ReadNumber());
                     n3 = ReadNumber();
-                    DebugLogger.Log(" Attribute definition: {0}, ", n3);
+                    DebugLogger.Log(DebugLogger.LogType.P0 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue, 
+                        " Attribute definition: {0}, ", n3);
                     switch (n3)
                     {
                         case 37:
@@ -644,29 +701,41 @@ namespace EzCalcLink.Object
             {
                 ShowFatalError("File does not begin with record 0xE0 (Module Beginning).");
             }
-            DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Parsing header. . . .");
-            DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVerbose, "Processor: {0}", ReadString());
+            DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.Verbose, "Processor: {0}", ReadString());
             DebugLogger.LogLine("Module name: {0}", ReadString());
             while (WhichPart(index) == -1)
                 if (NextRecordIdIs(0xEC)) // Address Descriptor
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.VeryVerbose, "Address Descriptor (AD)");
+                    DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Address Descriptor (AD)");
                     int BitsPerMau = ReadNumber();
                     if (BitsPerMau != 8)
                         ShowFatalError("Bad byte size: {0}", BitsPerMau);
                     int MausPerAddress = ReadNumber();
                     if (MausPerAddress != 3) // TODO: Short mode support
                         ShowFatalError("Bad word size: {0} (only long mode supported; no Z80 mode support)", MausPerAddress);
-                    if (file[index] == 0xCD)
-                        ShowFatalError("File claims to be big-endian! (Not valid for Z80s.)");
-                    DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.VeryVeryVerbose, " (Validated for eZ80)");
+                    if (file[index] == 0xCC)
+                    {
+                        index++;
+                        DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVeryVerbose,
+                            " File claims to be little-endian.");
+                    }
+                    else if (file[index] == 0xCD)
+                    {
+                        index++;
+                        DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVeryVerbose,
+                            " File claims to be big-endian; that's probably a lie.");
+                    }
+                    else
+                        DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVeryVerbose,
+                            " File does not specify endianess.");
                 }
                 else if (NextRecordIdIs(0xE2D7))
                 {
                     int asw = ReadNumber();
                     int offset = ReadNumber();
                     Parts[asw] = offset;
-                    DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Assign Pointer to part {0}: {1:X8}", asw, Parts[asw]);
+                    DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose,
+                        "Assign Pointer to part {0}: {1:X8}", asw, Parts[asw]);
                     switch (asw)
                     {
                         case 0:
@@ -701,7 +770,7 @@ namespace EzCalcLink.Object
                 }
                 else
                 {
-                    ShowError("Header: Unknown or unexpected field!");
+                    ShowFatalError("Header: Unknown or unexpected field!");
                 }
         }
         
