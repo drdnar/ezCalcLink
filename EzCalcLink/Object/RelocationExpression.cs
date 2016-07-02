@@ -72,8 +72,8 @@ namespace EzCalcLink.Object
             ReturnedByes = -1;
             Stack = new Stack<int>();
             for (int i = 0; i < Expression.Count; i++)
-                if (Expression[i] is Number)
-                    Stack.Push(((Number)Expression[i]).Value);
+                if (Expression[i] is NumberElement)
+                    Stack.Push(((NumberElement)Expression[i]).Value);
                 else if (Expression[i] is Function)
                     ((Function)Expression[i]).Evaluate(this);
                 else
@@ -119,10 +119,15 @@ namespace EzCalcLink.Object
         /// <summary>
         /// Represents a number in a relocation expression.
         /// </summary>
-        public sealed class Number : Element
+        protected class NumberElement : Element
         {
             public int Value;
 
+            public NumberElement(int n)
+            {
+                Value = n;
+            }
+            
             public override string ToString()
             {
                 return "0x" + Value.ToString("X");
@@ -130,7 +135,13 @@ namespace EzCalcLink.Object
         }
 
 
-        protected sealed class GetSectionAddressFunction : Function
+        public Element Number(int n)
+        {
+            return new NumberElement(n);
+        }
+
+
+        protected class GetSectionAddressFunction : Function
         {
             internal Section section;
 
@@ -161,7 +172,7 @@ namespace EzCalcLink.Object
         }
 
 
-        protected sealed class GetSymbolAddressFunction : Function
+        protected class GetSymbolAddressFunction : Function
         {
             internal Symbol symbol;
 
@@ -192,7 +203,7 @@ namespace EzCalcLink.Object
         }
 
 
-        protected sealed class BeginExpressionFunction : Function
+        protected class BeginExpressionFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -212,7 +223,7 @@ namespace EzCalcLink.Object
         public static readonly Element BeginExpression = new BeginExpressionFunction();
         
 
-        protected sealed class EndExpressionFunction : Function
+        protected class EndExpressionFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -232,7 +243,7 @@ namespace EzCalcLink.Object
         public static readonly Element EndExpression = new EndExpressionFunction();
 
 
-        protected sealed class AddFunction : Function
+        protected class AddFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -252,7 +263,7 @@ namespace EzCalcLink.Object
         public static readonly Element Add = new AddFunction();
 
 
-        protected sealed class SubtractFunction : Function
+        protected class SubtractFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -273,7 +284,7 @@ namespace EzCalcLink.Object
         public static readonly Element Subtract = new SubtractFunction();
 
 
-        protected sealed class MultiplyFunction : Function
+        protected class MultiplyFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -293,7 +304,7 @@ namespace EzCalcLink.Object
         public static readonly Element Multiply = new MultiplyFunction();
 
 
-        protected sealed class DivideFunction : Function
+        protected class DivideFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -314,7 +325,7 @@ namespace EzCalcLink.Object
         public static readonly Element Divide = new DivideFunction();
 
 
-        protected sealed class ModulusFunction : Function
+        protected class ModulusFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -335,7 +346,7 @@ namespace EzCalcLink.Object
         public static readonly Element Modulus = new ModulusFunction();
 
 
-        protected sealed class AbsoluteValueFunction : Function
+        protected class AbsoluteValueFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -356,7 +367,7 @@ namespace EzCalcLink.Object
         public static readonly Element AbsoluteValue = new AbsoluteValueFunction();
 
 
-        protected sealed class MinimumFunction : Function
+        protected class MinimumFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -378,7 +389,7 @@ namespace EzCalcLink.Object
         public static readonly Element Minimum = new MinimumFunction();
 
 
-        protected sealed class MaximumFunction : Function
+        protected class MaximumFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -400,7 +411,7 @@ namespace EzCalcLink.Object
         public static readonly Element Maximum = new MaximumFunction();
 
 
-        protected sealed class LeftShiftFunction : Function
+        protected class LeftShiftFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -421,7 +432,7 @@ namespace EzCalcLink.Object
         public static readonly Element LeftShift = new LeftShiftFunction();
 
 
-        protected sealed class RightShiftFunction : Function
+        protected class RightShiftFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -442,7 +453,7 @@ namespace EzCalcLink.Object
         public static readonly Element RightShift = new RightShiftFunction();
 
 
-        protected sealed class NotFunction : Function
+        protected class NotFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -462,7 +473,7 @@ namespace EzCalcLink.Object
         public static readonly Element Not = new NotFunction();
 
 
-        protected sealed class AndFunction : Function
+        protected class AndFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -482,7 +493,7 @@ namespace EzCalcLink.Object
         public static readonly Element And = new AndFunction();
 
 
-        protected sealed class OrFunction : Function
+        protected class OrFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
@@ -502,7 +513,7 @@ namespace EzCalcLink.Object
         public static readonly Element Or = new OrFunction();
 
 
-        protected sealed class XorFunction : Function
+        protected class XorFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
             {
