@@ -199,13 +199,175 @@ namespace EzCalcLink.Object
             ParseP3();
             DebugLogger.Unindent();
 
+            // Debug information
+            DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Skipping debug information.");
 
+            // Data
+            index = PtrToAsw5;
+            DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing P5. . . .");
+            DebugLogger.Indent();
+            ParseP5();
+            DebugLogger.Unindent();
+
+            
             // Copy section list to output object
             foreach (KeyValuePair<int, Section> s in sections)
                 Obj.Sections.Add(s.Value);
             // Copy symbol list to output object
             foreach (KeyValuePair<int, Symbol> s in symbols)
                 Obj.Symbols.Add(s.Value);
+        }
+
+
+        protected void ParseP5()
+        {
+            Section s;
+            int nextExpectedAddress = 0;
+            while (WhichPart(index) == 5)
+                if (NextRecordIdIs(0xE5))
+                {
+                    currentSection = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Current section index (SB): {0} {1}", currentSection, sections[currentSection].Name);
+                }
+                else if (NextRecordIdIs(0xE2D0))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Current section PC (ASP)");
+                    currentSection = ReadNumber();
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Section index: {0} {1}", currentSection, sections[currentSection].Name);
+                    s = sections[currentSection];
+                    if (NextItemIsNumber())
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Basic value: 0x{0:X6}", ReadNumber());
+                    else
+                    {
+                        if (file[index++] != 0xD2) // R variable
+                            ShowFatalError("Parse PC location expression error: Did not get expected R token.");
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                            " Section {0} + ", sections[ReadNumber()].Name);
+                        if (file[index] == 0x90) // Ignore comma entity
+                            index++;
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                            " Value: 0x{0:X6}", ReadNumber());
+                        if (file[index] == 0x90) // Ignore comma entity
+                            index++;
+                        if (file[index++] != 0xA5) // Add function
+                            ShowFatalError("Parse PC location expression error: Did not end with expected add function.");
+                    }
+                }
+                else if (NextRecordIdIs(0xED))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Load Constant MAUs (LD)");
+                    int n = ReadNumber();
+                    DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Data bytes: {0}  ", n);
+                    for (int i = 0; i < n; i++)
+                    {
+                        DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
+                            "{0:X2}", file[index + i]);
+                    }
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue);
+                    index += n;
+                }
+                /*else if (NextRecordIdIs(0xE3)) Zilog doesn't appear to use these.
+                else if (NextRecordIdIs(0xF7))
+                else if (NextRecordIdIs(0xE2D2))
+                else if (NextRecordIdIs(0xE2D7))*/
+                else if (NextRecordIdIs(0xE4))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
+                        "Load With Relocation (LR)");
+                    while (file[index] < 0xE0)
+                    {
+                        if (NextItemIsNumber())
+                        {
+                            int bits = ReadNumber();
+                            int bytes = bits >> 3;
+                            DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                                " Data bytes: {0}  ", bytes);
+                            for (int i = 0; i < bytes; i++)
+                            {
+                                DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
+                                    "{0:X2}", file[index + i]);
+                            }
+                            index += bytes;
+                            DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue);
+                        }
+                        else
+                        {
+                            DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                                " Relocation: ");
+                            if (file[index++] != 0xBE) // Open expression type C
+                                ShowFatalError("Parse data relocation expression: Expected open expression token.");
+                            char v = ' ';
+                            if (file[index] == 0xD2) // R variable
+                                v = 'R';
+                            else if (file[index] == 0xD8) // X variable
+                                v = 'X';
+                            else
+                                ShowFatalError("Parse data relocation expression: Expected R or X variable.");
+                            index++;
+                            DebugLogger.Log("{0}({1})", v, ReadNumber());
+                            if (file[index] == 0x90) // Ignore comma entity
+                                index++;
+                            if (v == 'R')
+                            {
+                                DebugLogger.LogLine(" + {0:X6}", ReadNumber());
+                                if (file[index] == 0x90) // Ignore comma entity
+                                    index++;
+                            }
+                            else
+                                DebugLogger.LogLine();
+                            int byteCount = 0;
+                            while (byteCount < 3)
+                            {
+                                if (NextItemIsNumber())
+                                    DebugLogger.Log("{0}", ReadNumber());
+                                else
+                                    switch (file[index++])
+                                    {
+                                        case 0x90:
+                                            DebugLogger.Log(",");
+                                            break;
+                                        case 0xA5:
+                                            DebugLogger.Log("+");
+                                            break;
+                                        case 0xB0:
+                                            DebugLogger.Log("&");
+                                            break;
+                                        case 0xBE:
+                                            DebugLogger.Log("{");
+                                            break;
+                                        case 0xB9:
+                                            if (file[index++] != 0x6)
+                                                ShowFatalError("Parse data relocation expression: Unknown extended token.");
+                                            DebugLogger.Log(">>");
+                                            break;
+                                        case 0xBF:
+                                            DebugLogger.Log("}");
+                                            byteCount++;
+                                            break;
+                                        case 0xD2:
+                                        case 0xD8:
+                                            DebugLogger.Log("v({0})", ReadNumber());
+                                            break;
+                                        default:
+                                            ShowFatalError("Parse data relocation expression: Unexpected token, or unexpected end to expression.");
+                                            break;
+                                    }
+                            }
+                            DebugLogger.LogLine();
+                        }
+                    }
+                }
+                //else if (NextRecordIdIs(0xFA)) Zilog doesn't appear to use this.
+                else
+                {
+                    ShowFatalError("P5: Unknown or unexpected field.");
+                }
         }
 
         
