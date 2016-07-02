@@ -46,6 +46,13 @@ namespace EzCalcLink.Object
         /// </summary>
         public int BaseAddress;
 
+
+        /// <summary>
+        /// True if the final address of this section has been resolved.
+        /// </summary>
+        public bool Resolved;
+
+
         /// <summary>
         /// Returns true if all data in the section is combined into one memory
         /// </summary>

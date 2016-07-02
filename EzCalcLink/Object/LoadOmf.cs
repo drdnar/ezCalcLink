@@ -525,6 +525,7 @@ namespace EzCalcLink.Object
                         ShowFatalError("ASL record: Section #{0} not yet defined.", currentSection);
                     Section s = sections[currentSection];
                     s.BaseAddress = ReadNumber();
+                    s.Resolved = true;
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Section base address: 0x{0:X6}", s.BaseAddress);
                 }
@@ -539,6 +540,7 @@ namespace EzCalcLink.Object
                         ShowFatalError("ASR record: Section #{0} not yet defined.", currentSection);
                     Section s = sections[currentSection];
                     s.BaseAddress = ReadNumber();
+                    s.Resolved = true;
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Section base address/offset: 0x{0:X6}", s.BaseAddress);
                 }

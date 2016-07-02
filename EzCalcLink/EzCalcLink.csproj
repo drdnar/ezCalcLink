@@ -47,6 +47,7 @@
     <Compile Include="Object\LoadOmf.cs" />
     <Compile Include="Object\ObjectFile.cs" />
     <Compile Include="Object\Relocation.cs" />
+    <Compile Include="Object\RelocationExpression.cs" />
     <Compile Include="Object\Section.cs" />
     <Compile Include="Object\Symbol.cs" />
     <Compile Include="Omf\Omf695.cs" />
