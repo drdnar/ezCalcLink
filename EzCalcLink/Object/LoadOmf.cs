@@ -300,66 +300,7 @@ namespace EzCalcLink.Object
                         {
                             DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                                 " Relocation: ");
-                            if (file[index++] != 0xBE) // Open expression type C
-                                ShowFatalError("Parse data relocation expression: Expected open expression token.");
-                            char v = ' ';
-                            if (file[index] == 0xD2) // R variable
-                                v = 'R';
-                            else if (file[index] == 0xD8) // X variable
-                                v = 'X';
-                            else
-                                ShowFatalError("Parse data relocation expression: Expected R or X variable.");
-                            index++;
-                            DebugLogger.Log("{0}({1})", v, ReadNumber());
-                            if (file[index] == 0x90) // Ignore comma entity
-                                index++;
-                            if (v == 'R')
-                            {
-                                DebugLogger.LogLine(" + {0:X6}", ReadNumber());
-                                if (file[index] == 0x90) // Ignore comma entity
-                                    index++;
-                            }
-                            else
-                                DebugLogger.LogLine();
-                            int byteCount = 0;
-                            while (byteCount < 3)
-                            {
-                                if (NextItemIsNumber())
-                                    DebugLogger.Log("{0}", ReadNumber());
-                                else
-                                    switch (file[index++])
-                                    {
-                                        case 0x90:
-                                            DebugLogger.Log(",");
-                                            break;
-                                        case 0xA5:
-                                            DebugLogger.Log("+");
-                                            break;
-                                        case 0xB0:
-                                            DebugLogger.Log("&");
-                                            break;
-                                        case 0xBE:
-                                            DebugLogger.Log("{");
-                                            break;
-                                        case 0xB9:
-                                            if (file[index++] != 0x6)
-                                                ShowFatalError("Parse data relocation expression: Unknown extended token.");
-                                            DebugLogger.Log(">>");
-                                            break;
-                                        case 0xBF:
-                                            DebugLogger.Log("}");
-                                            byteCount++;
-                                            break;
-                                        case 0xD2:
-                                        case 0xD8:
-                                            DebugLogger.Log("v({0})", ReadNumber());
-                                            break;
-                                        default:
-                                            ShowFatalError("Parse data relocation expression: Unexpected token, or unexpected end to expression.");
-                                            break;
-                                    }
-                            }
-                            DebugLogger.LogLine();
+                            DebugLogger.LogLine(" Expression: {0}", OmfExpression.FromArray(ref index, file));
                         }
                     }
                 }

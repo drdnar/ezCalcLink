@@ -108,6 +108,7 @@ namespace EzCalcLink
             EscapeInBlock = 0x4B9,
             EscapeCall_Opt = 0x5B9,
             EscapeRShift = 0x6B9,
+            EscapeLShift = 0x7B9,
             OpenExpressionA = 0xBA,
             CloseExpressionA = 0xBB,
             OpenExpressionB = 0xBC,
@@ -283,6 +284,8 @@ namespace EzCalcLink
                             return "CALL_OPT";
                         case FunctionTypes.EscapeRShift:
                             return ">>";
+                        case FunctionTypes.EscapeLShift:
+                            return "<<";
                         case FunctionTypes.OpenExpressionA:
                             return "{A{";
                         case FunctionTypes.CloseExpressionA:
@@ -296,7 +299,7 @@ namespace EzCalcLink
                         case FunctionTypes.CloseExpressionC:
                             return "}C}";
                     }
-                    return "??";
+                    return "<" + ((int)FunctionType).ToString("X2") + ">";
             }
             return "This really shouldn't be possible to return.";
         }
