@@ -223,12 +223,21 @@ namespace EzCalcLink.Object
         {
             Section s;
             int nextExpectedAddress = 0;
+            int newAddress = 0;
+            bool explicitAddress = false;
+            int lastSection = -1;
             while (WhichPart(index) == 5)
                 if (NextRecordIdIs(0xE5))
                 {
                     currentSection = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Current section index (SB): {0} {1}", currentSection, sections[currentSection].Name);
+                    if (lastSection != currentSection)
+                    {
+                        lastSection = currentSection;
+                        nextExpectedAddress = 0;
+                        explicitAddress = false;
+                    }
                 }
                 else if (NextRecordIdIs(0xE2D0))
                 {
@@ -239,23 +248,46 @@ namespace EzCalcLink.Object
                         " Section index: {0} {1}", currentSection, sections[currentSection].Name);
                     s = sections[currentSection];
                     if (NextItemIsNumber())
+                    {
+                        newAddress = ReadNumber();
                         DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
-                        " Basic value: 0x{0:X6}", ReadNumber());
+                        " Basic value: 0x{0:X6}", newAddress);
+                    }
                     else
                     {
                         if (file[index++] != 0xD2) // R variable
                             ShowFatalError("Parse PC location expression error: Did not get expected R token.");
-                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
-                            " Section {0} + ", sections[ReadNumber()].Name);
+                        DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                            " Expression: Section {0} + ", sections[ReadNumber()].Name);
                         if (file[index] == 0x90) // Ignore comma entity
                             index++;
+                        newAddress = ReadNumber();
                         DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
-                            " Value: 0x{0:X6}", ReadNumber());
+                            "0x{0:X6}", newAddress);
                         if (file[index] == 0x90) // Ignore comma entity
                             index++;
                         if (file[index++] != 0xA5) // Add function
                             ShowFatalError("Parse PC location expression error: Did not end with expected add function.");
                     }
+                    if (lastSection != currentSection)
+                    {
+                        lastSection = currentSection;
+                        nextExpectedAddress = newAddress;
+                    }
+                    else
+                    {
+                        if (newAddress != nextExpectedAddress && explicitAddress && s.Data.Count > 0)
+                        {
+                            ShowError("Mismatch between expected address (0x{0:X6}) and given address (0x{1:X6}).", nextExpectedAddress, newAddress);
+                            nextExpectedAddress = newAddress;
+                            Console.ReadKey();
+                        }
+                        else if (s.Data.Count == 0)
+                        {
+                            s.ExpectedSize = newAddress;
+                        }
+                    }
+                    explicitAddress = true;
                 }
                 else if (NextRecordIdIs(0xED))
                 {
@@ -269,6 +301,7 @@ namespace EzCalcLink.Object
                         DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                             "{0:X2}", file[index + i]);
                     }
+                    nextExpectedAddress += n;
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue);
                     index += n;
                 }
@@ -294,6 +327,7 @@ namespace EzCalcLink.Object
                                     "{0:X2}", file[index + i]);
                             }
                             index += bytes;
+                            nextExpectedAddress += bytes;
                             DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue);
                         }
                         else
@@ -301,6 +335,7 @@ namespace EzCalcLink.Object
                             DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                                 " Relocation: ");
                             DebugLogger.LogLine(" Expression: {0}", OmfExpression.FromArray(ref index, file));
+                            nextExpectedAddress += 3;
                         }
                     }
                 }
