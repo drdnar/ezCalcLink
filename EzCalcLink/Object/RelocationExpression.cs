@@ -35,7 +35,13 @@ namespace EzCalcLink.Object
         /// <summary>
         /// Used to make processing expressions slightly less awkward.
         /// </summary>
-        protected int ReturnedByes;
+        public int ReturnedByes;
+
+
+        /// <summary>
+        /// Also used to make processing expressions slightly less awkward.
+        /// </summary>
+        public int ReturnedBytesExpected;
 
 
         /// <summary>
@@ -57,18 +63,6 @@ namespace EzCalcLink.Object
         /// <returns></returns>
         public int Evaluate()
         {
-            int b;
-            return Evaluate(out b);
-        }
-
-
-        /// <summary>
-        /// Evaluates the expression
-        /// </summary>
-        /// <param name="returnedBytes">Number of bytes returned, or -1 if unspecified.</param>
-        /// <returns></returns>
-        public int Evaluate(out int returnedBytes)
-        {
             ReturnedByes = -1;
             Stack = new Stack<int>();
             for (int i = 0; i < Expression.Count; i++)
@@ -78,11 +72,60 @@ namespace EzCalcLink.Object
                     ((Function)Expression[i]).Evaluate(this);
                 else
                     throw new InvalidOperationException("Expression contains element that is neither a function nor a number.");
-            returnedBytes = ReturnedByes;
             if (Stack.Count == 1)
-                return Stack.Pop();
+            {
+                evaluated = true;
+                return value = Stack.Pop();
+            }
             else
                 throw new RelocationParseException("Stack still has values on it after expression evaluated fully.");
+        }
+
+
+        /// <summary>
+        /// Automatically set to true when the expression is evaluated successfully.
+        /// </summary>
+        protected bool evaluated = false;
+        /// <summary>
+        /// Returns true if the expression has previously been successfully evaluated.
+        /// Can be manually forced to false to force reevaluation.
+        /// Cannot be manually set to true.
+        /// </summary>
+        public bool Evaluated
+        {
+            get
+            {
+                return evaluated;
+            }
+            set
+            {
+                if (evaluated == value)
+                    return;
+                if (evaluated) // evaluated is true, and evaluated != value, so value == false;
+                    evaluated = value; // Thus, this sets evaluated to false, manually forcing reevaluation
+                else
+                    throw new InvalidOperationException("Cannot manually set expression to Evaluated without actually evaluating it.");
+            }
+        }
+
+
+        /// <summary>
+        /// Holds the cached value of the last Evaluation.
+        /// </summary>
+        protected int value;
+        /// <summary>
+        /// If the expression has been evaluated, returns the cached value.
+        /// If not, attempts to evaluate the expression.
+        /// </summary>
+        public int Value
+        {
+            get
+            {
+                if (evaluated)
+                    return value;
+                Evaluate();
+                return value;
+            }
         }
 
 
@@ -107,7 +150,36 @@ namespace EzCalcLink.Object
         /// </summary>
         public abstract class Element
         {
-            
+            public static bool operator ==(Element a, Element b)
+            {
+                if (a is NumberElement)
+                    if (b is NumberElement)
+                        return ((NumberElement)a).Value == ((NumberElement)b).Value;
+                    else
+                        return false;
+                if (a is GetSectionAddressFunction)
+                    if (b is GetSectionAddressFunction)
+                        return ((GetSectionAddressFunction)a).section == ((GetSectionAddressFunction)b).section;
+                    else
+                        return false;
+                if (a is GetSymbolAddressFunction)
+                    if (b is GetSymbolAddressFunction)
+                        return ((GetSymbolAddressFunction)a).symbol == ((GetSymbolAddressFunction)b).symbol;
+                    else
+                        return false;
+                if (a is Function)
+                    if (b is Function)
+                        return object.ReferenceEquals(a, b);
+                    else
+                        return false;
+                return false;
+            }
+
+
+            public static bool operator !=(Element a, Element b)
+            {
+                return !(a == b);
+            }
         }
 
         protected abstract class Function : Element
@@ -119,7 +191,7 @@ namespace EzCalcLink.Object
         /// <summary>
         /// Represents a number in a relocation expression.
         /// </summary>
-        protected class NumberElement : Element
+        public class NumberElement : Element
         {
             public int Value;
 
@@ -138,6 +210,14 @@ namespace EzCalcLink.Object
         public Element Number(int n)
         {
             return new NumberElement(n);
+        }
+
+
+        public Element AddNumber(int n)
+        {
+            Element e = new NumberElement(n);
+            Expression.Add(e);
+            return e;
         }
 
 
@@ -172,6 +252,19 @@ namespace EzCalcLink.Object
         }
 
 
+        /// <summary>
+        /// Adds a reference to the start address of the given section.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        public Element AddSectionAddress(Section s)
+        {
+            Element e = GetSectionAddress(s);
+            Expression.Add(e);
+            return e;
+        }
+
+
         protected class GetSymbolAddressFunction : Function
         {
             internal Symbol symbol;
@@ -203,6 +296,19 @@ namespace EzCalcLink.Object
         }
 
 
+        /// <summary>
+        /// Adds a reference to the address of the given symbol.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        public Element AddSymbolAddress(Symbol s)
+        {
+            Element e = GetSymbolAddress(s);
+            Expression.Add(e);
+            return e;
+        }
+
+
         protected class BeginExpressionFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -222,6 +328,15 @@ namespace EzCalcLink.Object
         /// </summary>
         public static readonly Element BeginExpression = new BeginExpressionFunction();
         
+
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddBeginExpression()
+        {
+            Expression.Add(BeginExpression);
+        }
+
 
         protected class EndExpressionFunction : Function
         {
@@ -243,6 +358,15 @@ namespace EzCalcLink.Object
         public static readonly Element EndExpression = new EndExpressionFunction();
 
 
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddEndExpression()
+        {
+            Expression.Add(EndExpression);
+        }
+
+
         protected class AddFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -261,6 +385,15 @@ namespace EzCalcLink.Object
         /// Adds the top two elements on the expression stack stack together.
         /// </summary>
         public static readonly Element Add = new AddFunction();
+
+        
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddAdd()
+        {
+            Expression.Add(Add);
+        }
 
 
         protected class SubtractFunction : Function
@@ -283,6 +416,15 @@ namespace EzCalcLink.Object
         /// </summary>
         public static readonly Element Subtract = new SubtractFunction();
 
+        
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddSubtract()
+        {
+            Expression.Add(Subtract);
+        }
+
 
         protected class MultiplyFunction : Function
         {
@@ -304,6 +446,15 @@ namespace EzCalcLink.Object
         public static readonly Element Multiply = new MultiplyFunction();
 
 
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddMultiply()
+        {
+            Expression.Add(Multiply);
+        }
+
+
         protected class DivideFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -323,6 +474,15 @@ namespace EzCalcLink.Object
         /// Divides the second stack element by the top stack element.
         /// </summary>
         public static readonly Element Divide = new DivideFunction();
+
+        
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddDivide()
+        {
+            Expression.Add(Divide);
+        }
 
 
         protected class ModulusFunction : Function
@@ -346,6 +506,15 @@ namespace EzCalcLink.Object
         public static readonly Element Modulus = new ModulusFunction();
 
 
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddModulus()
+        {
+            Expression.Add(Modulus);
+        }
+
+
         protected class AbsoluteValueFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -365,6 +534,15 @@ namespace EzCalcLink.Object
         /// abs(stack(top))
         /// </summary>
         public static readonly Element AbsoluteValue = new AbsoluteValueFunction();
+
+        
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddAbsoluteValue()
+        {
+            Expression.Add(AbsoluteValue);
+        }
 
 
         protected class MinimumFunction : Function
@@ -389,6 +567,15 @@ namespace EzCalcLink.Object
         public static readonly Element Minimum = new MinimumFunction();
 
 
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddMinimum()
+        {
+            Expression.Add(Minimum);
+        }
+
+
         protected class MaximumFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -409,6 +596,15 @@ namespace EzCalcLink.Object
         /// max(stack(2), stack(top))
         /// </summary>
         public static readonly Element Maximum = new MaximumFunction();
+
+
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddMaximum()
+        {
+            Expression.Add(Maximum);
+        }
 
 
         protected class LeftShiftFunction : Function
@@ -432,6 +628,15 @@ namespace EzCalcLink.Object
         public static readonly Element LeftShift = new LeftShiftFunction();
 
 
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddLeftShift()
+        {
+            Expression.Add(LeftShift);
+        }
+
+
         protected class RightShiftFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -451,6 +656,15 @@ namespace EzCalcLink.Object
         /// stack(2) >> stack(top)
         /// </summary>
         public static readonly Element RightShift = new RightShiftFunction();
+
+
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddRightShift()
+        {
+            Expression.Add(RightShift);
+        }
 
 
         protected class NotFunction : Function
@@ -473,6 +687,15 @@ namespace EzCalcLink.Object
         public static readonly Element Not = new NotFunction();
 
 
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddNot()
+        {
+            Expression.Add(Not);
+        }
+
+
         protected class AndFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -491,6 +714,15 @@ namespace EzCalcLink.Object
         /// stack(2) & stack(top)
         /// </summary>
         public static readonly Element And = new AndFunction();
+
+
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddAnd()
+        {
+            Expression.Add(And);
+        }
 
 
         protected class OrFunction : Function
@@ -513,6 +745,15 @@ namespace EzCalcLink.Object
         public static readonly Element Or = new OrFunction();
 
 
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddOr()
+        {
+            Expression.Add(Or);
+        }
+
+
         protected class XorFunction : Function
         {
             internal override void Evaluate(RelocationExpression e)
@@ -532,5 +773,13 @@ namespace EzCalcLink.Object
         /// </summary>
         public static readonly Element Xor = new XorFunction();
 
+
+        /// <summary>
+        /// Adds the command
+        /// </summary>
+        public void AddXor()
+        {
+            Expression.Add(Xor);
+        }
     }
 }

@@ -151,15 +151,40 @@ namespace EzCalcLink.Object
             return o.Obj;
         }
 
+
+        protected RelocationExpression RExpClassA1;
+        protected RelocationExpression RExpClassA2;
+        protected RelocationExpression RExpClassA3;
+        protected RelocationExpression RExpClassA3b;
+        protected RelocationExpression RExpClassB;
+        protected RelocationExpression RExpClassB1;
+        protected RelocationExpression RExpClassB2;
+        //protected RelocationExpression RExpClassB3;
         
         /// <summary>
         /// Internal use only
         /// </summary>
         protected LoadOmf(string path)
         {
+            // Initialize some global thingies.
+            RExpClassA1 = new RelocationExpression();
+            RExpClassA1.AddNumber(0xFF); RExpClassA1.AddAnd(); RExpClassA1.AddNumber(0x8); RExpClassA1.AddEndExpression();
+            RExpClassA2 = new RelocationExpression();
+            RExpClassA2.AddNumber(0x8); RExpClassA2.AddRightShift(); RExpClassA2.AddNumber(0xFF); RExpClassA2.AddAnd(); RExpClassA2.AddNumber(0x8); RExpClassA2.AddEndExpression();
+            RExpClassA3 = new RelocationExpression();
+            RExpClassA3.AddNumber(0x10); RExpClassA3.AddRightShift(); RExpClassA3.AddNumber(0x8); RExpClassA3.AddEndExpression();
+            RExpClassA3b = new RelocationExpression();
+            RExpClassA3b.AddNumber(0x10); RExpClassA3b.AddRightShift(); RExpClassA3b.AddNumber(0xFF); RExpClassA3b.AddAnd(); RExpClassA3b.AddNumber(0x8); RExpClassA3b.AddEndExpression();
+            RExpClassB = new RelocationExpression();
+            RExpClassB.AddNumber(0xFF00); RExpClassB.AddAnd(); RExpClassB.AddAdd(); RExpClassB.AddNumber(0x18); RExpClassB.AddEndExpression();
+            RExpClassB1 = new RelocationExpression();
+            RExpClassB1.AddNumber(0xFF); RExpClassB1.AddAnd(); RExpClassB1.AddNumber(0x10); RExpClassB1.AddLeftShift();
+            RExpClassB2 = new RelocationExpression();
+            RExpClassB2.AddNumber(0x10); RExpClassB2.AddRightShift(); RExpClassB2.AddNumber(0xFF); RExpClassB2.AddAnd(); RExpClassB2.AddAdd();
+
+            // Load file.  Might as well crash now if the file can't be read.
             DebugLogger.Log(DebugLogger.LogType.Basic, "Loading file ");
             DebugLogger.LogLine(path);
-            // Load file.  Might as well crash now if the file can't be read.
             file = System.IO.File.ReadAllBytes(path);
             Obj.Name = path;
             // Copy address space list to output object
@@ -284,7 +309,12 @@ namespace EzCalcLink.Object
                         }
                         else if (s.Data.Count == 0)
                         {
-                            s.ExpectedSize = newAddress;
+                            /* For BSS, Zilog generates one address record for the start address of
+                             * each variable, except the first; and one address record for the end
+                             * address, plus one, of each variable.  Thus, it actually generates
+                             * two records for the end of each variable, except the last.
+                             * We don't need to do anything with that information.
+                             */
                         }
                     }
                     explicitAddress = true;
@@ -334,7 +364,10 @@ namespace EzCalcLink.Object
                         {
                             DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                                 " Relocation: ");
+                            int index2 = index;
                             DebugLogger.LogLine(" Expression: {0}", OmfExpression.FromArray(ref index, file));
+                            index = index2;
+                            ProcessZilogRelocation();
                             nextExpectedAddress += 3;
                         }
                     }
@@ -346,7 +379,193 @@ namespace EzCalcLink.Object
                 }
         }
 
-        
+
+        protected RelocationExpression ProcessZilogRelocation()
+        {
+            List<RelocationExpression> exps = new List<RelocationExpression>();
+            int nestLevel = 0;
+            int expCount = 0;
+            
+            while (file[index] < 0xDA)
+            {
+                switch (file[index])
+                {
+                    case 0x90: // Comma
+                        index++; // Ignore it
+                        break;
+                    case 0xA2: // Absolute value
+                        index++;
+                        exps.Last().AddAbsoluteValue();
+                        break;
+                    case 0xA4: // Bitwise NOT
+                        index++;
+                        exps.Last().AddNot();
+                        break;
+                    case 0xA5: // Add
+                        index++;
+                        exps.Last().AddAdd();
+                        break;
+                    case 0xA6: // Subtract
+                        index++;
+                        exps.Last().AddSubtract();
+                        break;
+                    case 0xA7: // Divide
+                        index++;
+                        exps.Last().AddDivide();
+                        break;
+                    case 0xA8: // Multiply
+                        index++;
+                        exps.Last().AddMultiply();
+                        break;
+                    case 0xA9: // Max
+                        index++;
+                        exps.Last().AddMaximum();
+                        break;
+                    case 0xAA: // Min
+                        index++;
+                        exps.Last().AddMinimum();
+                        break;
+                    case 0xAB: // Modulus
+                        index++;
+                        exps.Last().AddModulus();
+                        break;
+                    case 0xB0: // And
+                        index++;
+                        exps.Last().AddAnd();
+                        break;
+                    case 0xB1: // Or
+                        index++;
+                        exps.Last().AddOr();
+                        break;
+                    case 0xB2: // Xor
+                        index++;
+                        exps.Last().AddXor();
+                        break;
+                    case 0xB9: // Escape
+                        index++;
+                        switch (file[index++])
+                        {
+                            case 6: // Right shift
+                                exps.Last().AddRightShift();
+                                break;
+                            case 7: // Left shift
+                                exps.Last().AddLeftShift();
+                                break;
+                            default:
+                                ShowFatalError("Unknown escaped function type in expression.");
+                                break;
+                        }
+                        break;
+                    case 0xBE: // Open C
+                        index++;
+                        exps.Add(new RelocationExpression());
+                        exps.Last().ObjectFile = Obj;
+                        expCount++;
+                        nestLevel++;
+                        exps.Last().AddBeginExpression();
+                        break;
+                    case 0xBF: // Close C
+                        index++;
+                        nestLevel--;
+                        exps.Last().AddEndExpression();
+                        break;
+                    case 0xD2: // Var R
+                        index++;
+                        exps.Last().AddSectionAddress(sections[ReadNumber()]);
+                        break;
+                    case 0xD8: // Var X
+                        index++;
+                        exps.Last().AddSymbolAddress(symbols[ReadNumber()]);
+                        break;
+                    default:
+                        if (NextItemIsNumber())
+                            exps.Last().AddNumber(ReadNumber());
+                        else
+                            ShowFatalError("Unknown expression element.");
+                        break;
+                }   
+            }
+            foreach (var r in exps)
+                DebugLogger.LogLine(r.ToString());
+
+            if (nestLevel != 0)
+                ShowFatalError("Error parsing relocation: unbalanced expression ({0}).", nestLevel);
+
+            // Figure out relocation form
+            if (expCount == 3)
+            {
+                int i = MatchRelocationExpression(RExpClassA1, exps[0]);
+                if (i == -1)
+                    ShowFatalError("Error parsing relocation: Could not match expression to standard type (A1).");
+                exps[0].Expression.RemoveRange(i, exps[0].Expression.Count - i);
+                exps[0].Expression.RemoveAt(0);
+                i = MatchRelocationExpression(RExpClassA2, exps[1]);
+                if (i == -1)
+                    ShowFatalError("Error parsing relocation: Could not match expression to standard type (A2). {0}", RExpClassA2.ToString());
+                exps[1].Expression.RemoveRange(i, exps[1].Expression.Count - i);
+                exps[1].Expression.RemoveAt(0);
+                i = MatchRelocationExpression(RExpClassA3, exps[2]);
+                if (i == -1)
+                    if ((i = MatchRelocationExpression(RExpClassA3b, exps[2])) == -1)
+                        ShowFatalError("Error parsing relocation: Could not match expression to standard type (A3). {0}", RExpClassA3);
+                exps[2].Expression.RemoveRange(i, exps[2].Expression.Count - i);
+                exps[2].Expression.RemoveAt(0);
+                if (!RelocationExpressionExactlyEqualLameMethod(exps[0], exps[1]) || !RelocationExpressionExactlyEqualLameMethod(exps[2], exps[1]))
+                    ShowFatalError("Error parsing relocation: Data in standard type mismatch (A).");
+                return exps[0];
+            }
+            else if (expCount == 1)
+            {
+                if (exps[0].Expression[0] != RelocationExpression.BeginExpression)
+                    ShowFatalError("Error parsing relocation: B-type header.");
+                // After seeing the variations in expression type and endian-reversal:
+                // <KermPhD> DrDnar, that's baffling.
+                //int i
+            }
+            return new RelocationExpression();
+        }
+
+
+        /// <summary>
+        /// A lame excuse for regex. . . .
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        protected int MatchRelocationExpression(RelocationExpression a, RelocationExpression b)
+        {
+            for (int i = 0; i < b.Expression.Count(); i++)
+            {
+                if (MatchRelocationExpressionTest(a, b, i))
+                    return i;
+            }
+            return -1;
+        }
+
+
+        protected bool MatchRelocationExpressionTest(RelocationExpression a, RelocationExpression b, int j)
+        {
+            for (int i = 0; i < a.Expression.Count; i++)
+                if (b.Expression.Count == i + j)
+                    return false;
+                else
+                    if (a.Expression[i] != b.Expression[i + j])
+                        return false;
+            return true;
+        }
+
+
+        protected bool RelocationExpressionExactlyEqualLameMethod(RelocationExpression a, RelocationExpression b)
+        {
+            if (a.Expression.Count != b.Expression.Count)
+                return false;
+            for (int i = 0; i < a.Expression.Count; i++)
+                if (a.Expression[i] != b.Expression[i])
+                    return false;
+            return true;
+        }
+
+
         protected void ParseP3()
         {
             int n1, n2, n3;

@@ -36,7 +36,7 @@ namespace EzCalcLink.Object
         /// <summary>
         /// Contains a list of all relocations found in the file
         /// </summary>
-        public List<Relocation> Relocations = new List<Relocation>();
+        public Dictionary<int, RelocationExpression> Relocations = new Dictionary<int, RelocationExpression>();
 
         /// <summary>
         /// For a statically linked object file, returns the final address this
