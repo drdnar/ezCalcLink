@@ -156,9 +156,9 @@ namespace EzCalcLink.Object
         protected RelocationExpression RExpClassA2;
         protected RelocationExpression RExpClassA3;
         protected RelocationExpression RExpClassA3b;
-        protected RelocationExpression RExpClassB;
-        protected RelocationExpression RExpClassB1;
         protected RelocationExpression RExpClassB2;
+        protected RelocationExpression RExpClassB3;
+        protected RelocationExpression RExpClassB1;
         //protected RelocationExpression RExpClassB3;
         
         /// <summary>
@@ -175,13 +175,13 @@ namespace EzCalcLink.Object
             RExpClassA3.AddNumber(0x10); RExpClassA3.AddRightShift(); RExpClassA3.AddNumber(0x8); RExpClassA3.AddEndExpression();
             RExpClassA3b = new RelocationExpression();
             RExpClassA3b.AddNumber(0x10); RExpClassA3b.AddRightShift(); RExpClassA3b.AddNumber(0xFF); RExpClassA3b.AddAnd(); RExpClassA3b.AddNumber(0x8); RExpClassA3b.AddEndExpression();
-            RExpClassB = new RelocationExpression();
-            RExpClassB.AddNumber(0xFF00); RExpClassB.AddAnd(); RExpClassB.AddAdd(); RExpClassB.AddNumber(0x18); RExpClassB.AddEndExpression();
             RExpClassB1 = new RelocationExpression();
             RExpClassB1.AddNumber(0xFF); RExpClassB1.AddAnd(); RExpClassB1.AddNumber(0x10); RExpClassB1.AddLeftShift();
             RExpClassB2 = new RelocationExpression();
             RExpClassB2.AddNumber(0x10); RExpClassB2.AddRightShift(); RExpClassB2.AddNumber(0xFF); RExpClassB2.AddAnd(); RExpClassB2.AddAdd();
-
+            RExpClassB3 = new RelocationExpression();
+            RExpClassB3.AddNumber(0xFF00); RExpClassB3.AddAnd(); RExpClassB3.AddAdd(); RExpClassB3.AddNumber(0x18); RExpClassB3.AddEndExpression();
+            
             // Load file.  Might as well crash now if the file can't be read.
             DebugLogger.Log(DebugLogger.LogType.Basic, "Loading file ");
             DebugLogger.LogLine(path);
@@ -485,6 +485,10 @@ namespace EzCalcLink.Object
                         break;
                 }   
             }
+
+            if (exps.Count == 0)
+                ShowFatalError("Error parsing relocation: Nothing parsed.");
+
             foreach (var r in exps)
                 DebugLogger.LogLine(r.ToString());
 
@@ -492,6 +496,11 @@ namespace EzCalcLink.Object
                 ShowFatalError("Error parsing relocation: unbalanced expression ({0}).", nestLevel);
 
             // Figure out relocation form
+            // Zilog seems always to generate each byte separately, using shift-and-mask patterns.
+            // So this does two things:
+            //  1. Identify the core expression by removing the shift-and-mask patterns.
+            //  2. Verify that it is OK to do that by parsing all the shift-mask-mask patterns and
+            //     checking if the core expression data are the same.
             if (expCount == 3)
             {
                 int i = MatchRelocationExpression(RExpClassA1, exps[0]);
@@ -512,16 +521,42 @@ namespace EzCalcLink.Object
                 exps[2].Expression.RemoveAt(0);
                 if (!RelocationExpressionExactlyEqualLameMethod(exps[0], exps[1]) || !RelocationExpressionExactlyEqualLameMethod(exps[2], exps[1]))
                     ShowFatalError("Error parsing relocation: Data in standard type mismatch (A).");
+                exps[0].ReturnedByes = 3;
                 return exps[0];
             }
             else if (expCount == 1)
             {
-                if (exps[0].Expression[0] != RelocationExpression.BeginExpression)
+                RelocationExpression e = exps[0];
+                if (e.Expression[0] != RelocationExpression.BeginExpression)
                     ShowFatalError("Error parsing relocation: B-type header.");
+                e.Expression.RemoveAt(0);
                 // After seeing the variations in expression type and endian-reversal:
                 // <KermPhD> DrDnar, that's baffling.
-                //int i
+                int i = MatchRelocationExpression(RExpClassB1, e);
+                if (i == -1)
+                    ShowFatalError("Error parsing relocation: Could not match expression to standard type (B1)");
+                exps.Add(new RelocationExpression());
+                for (int j = i + RExpClassB1.Expression.Count; j < e.Expression.Count; j++)
+                    exps[1].Expression.Add(e.Expression[j]);
+                e.Expression.RemoveRange(i, e.Expression.Count - i);
+                i = MatchRelocationExpression(RExpClassB2, exps[1]);
+                if (i == -1)
+                    ShowFatalError("Error parsing relocation: Could not match expression to standard type (B2)");
+                exps.Add(new RelocationExpression());
+                for (int j = i + RExpClassB2.Expression.Count; j < exps[1].Expression.Count; j++)
+                    exps[2].Expression.Add(exps[1].Expression[j]);
+                exps[1].Expression.RemoveRange(i, exps[1].Expression.Count - i);
+                i = MatchRelocationExpression(RExpClassB3, exps[2]);
+                if (i == -1)
+                    ShowFatalError("Error parsing relocation: Could not match expression to standard type (B3)");
+                exps[2].Expression.RemoveRange(i, exps[2].Expression.Count - i);
+                if (!RelocationExpressionExactlyEqualLameMethod(exps[0], exps[1]) || !RelocationExpressionExactlyEqualLameMethod(exps[2], exps[1]))
+                    ShowFatalError("Error parsing relocation: Data in standard type mismatch (B).");
+                e.ReturnedByes = 3;
+                return e;
             }
+            else
+                ShowFatalError("Error parsing relocation: Could not match expression to standard type at all.");
             return new RelocationExpression();
         }
 
