@@ -96,5 +96,42 @@ namespace EzCalcLink.Object
         /// Notation for assisting with parsing
         /// </summary>
         public int ExpectedSize;
+
+
+        public int NextAddress;
+
+
+        /// <summary>
+        /// Adds a byte to the section.
+        /// </summary>
+        /// <param name="b"></param>
+        public void SetByte(byte b)
+        {
+            SetByte(NextAddress, b);
+            NextAddress++;
+        }
+
+
+        /// <summary>
+        /// Adds a byte to the section at a given address.
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="b"></param>
+        public void SetByte(int address, byte b)
+        {
+            NextAddress = address;
+            ContiguousMemory m = Data.Where(x => x.CanAdd(address)).FirstOrDefault();
+            if (m == null)
+                Data.Add(new ContiguousMemory(address, b));
+            else
+            {
+                m[address] = b;
+                ContiguousMemory n = Data.Where(x => x != m && m.CanMergeWith(x)).FirstOrDefault();
+                if (n == null)
+                    return;
+                m.MergeWith(n);
+                Data.Remove(n);
+            }
+        }
     }
 }

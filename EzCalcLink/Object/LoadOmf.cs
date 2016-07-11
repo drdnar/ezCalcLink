@@ -225,19 +225,24 @@ namespace EzCalcLink.Object
             DebugLogger.Unindent();
 
             // Debug information
-            DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Skipping debug information.");
+            DebugLogger.LogLine(DebugLogger.LogType.P4 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Skipping debug information.");
 
             // Data
             index = PtrToAsw5;
-            DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing P5. . . .");
+            DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing P5. . . .");
             DebugLogger.Indent();
             ParseP5();
             DebugLogger.Unindent();
 
+            DebugLogger.LogLine(DebugLogger.LogType.P6 | DebugLogger.LogType.P7 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "P6 and P7 ignored.");
             
             // Copy section list to output object
+            DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose, "Section information:");
             foreach (KeyValuePair<int, Section> s in sections)
+            {
                 Obj.Sections.Add(s.Value);
+                DebugLogger.LogLine("Section {0}: AS: {1}, Base: {2:X6}, CM count: {3}, Reloc count: {4}", s.Value.Name, s.Value.AddressSpace.Name, s.Value.BaseAddress, s.Value.Data.Count, s.Value.Relocations.Count);
+            }
             // Copy symbol list to output object
             foreach (KeyValuePair<int, Symbol> s in symbols)
                 Obj.Symbols.Add(s.Value);
@@ -257,10 +262,11 @@ namespace EzCalcLink.Object
                     currentSection = ReadNumber();
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
                         "Current section index (SB): {0} {1}", currentSection, sections[currentSection].Name);
+                    s = sections[currentSection];
                     if (lastSection != currentSection)
                     {
                         lastSection = currentSection;
-                        nextExpectedAddress = 0;
+                        s.NextAddress = nextExpectedAddress = 0;
                         explicitAddress = false;
                     }
                 }
@@ -297,14 +303,14 @@ namespace EzCalcLink.Object
                     if (lastSection != currentSection)
                     {
                         lastSection = currentSection;
-                        nextExpectedAddress = newAddress;
+                        s.NextAddress = nextExpectedAddress = newAddress;
                     }
                     else
                     {
                         if (newAddress != nextExpectedAddress && explicitAddress && s.Data.Count > 0)
                         {
                             ShowError("Mismatch between expected address (0x{0:X6}) and given address (0x{1:X6}).", nextExpectedAddress, newAddress);
-                            nextExpectedAddress = newAddress;
+                            s.NextAddress = nextExpectedAddress = newAddress;
                             Console.ReadKey();
                         }
                         else if (s.Data.Count == 0)
@@ -323,6 +329,7 @@ namespace EzCalcLink.Object
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Load Constant MAUs (LD)");
+                    s = sections[currentSection];
                     int n = ReadNumber();
                     DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                         " Data bytes: {0}  ", n);
@@ -330,6 +337,7 @@ namespace EzCalcLink.Object
                     {
                         DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                             "{0:X2}", file[index + i]);
+                        s.SetByte(file[index + i]);
                     }
                     nextExpectedAddress += n;
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue);
@@ -343,6 +351,7 @@ namespace EzCalcLink.Object
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
                         "Load With Relocation (LR)");
+                    s = sections[currentSection];
                     while (file[index] < 0xE0)
                     {
                         if (NextItemIsNumber())
@@ -355,6 +364,7 @@ namespace EzCalcLink.Object
                             {
                                 DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                                     "{0:X2}", file[index + i]);
+                                s.SetByte(file[index + i]);
                             }
                             index += bytes;
                             nextExpectedAddress += bytes;
@@ -365,9 +375,10 @@ namespace EzCalcLink.Object
                             DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
                                 " Relocation: ");
                             int index2 = index;
-                            DebugLogger.LogLine(" Expression: {0}", OmfExpression.FromArray(ref index, file));
-                            index = index2;
-                            ProcessZilogRelocation();
+                            RelocationExpression e = ProcessZilogRelocation();
+                            DebugLogger.LogLine(" Expression: {0}", e);
+                            s.Relocations.Add(index2, e);
+                            s.SetByte(0); s.SetByte(0); s.SetByte(0);
                             nextExpectedAddress += 3;
                         }
                     }
