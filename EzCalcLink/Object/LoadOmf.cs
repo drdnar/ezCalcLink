@@ -272,28 +272,28 @@ namespace EzCalcLink.Object
                 }
                 else if (NextRecordIdIs(0xE2D0))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldHeader,
                         "Current section PC (ASP)");
                     currentSection = ReadNumber();
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                         " Section index: {0} {1}", currentSection, sections[currentSection].Name);
                     s = sections[currentSection];
                     if (NextItemIsNumber())
                     {
                         newAddress = ReadNumber();
-                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                         " Basic value: 0x{0:X6}", newAddress);
                     }
                     else
                     {
                         if (file[index++] != 0xD2) // R variable
                             ShowFatalError("Parse PC location expression error: Did not get expected R token.");
-                        DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                             " Expression: Section {0} + ", sections[ReadNumber()].Name);
                         if (file[index] == 0x90) // Ignore comma entity
                             index++;
                         newAddress = ReadNumber();
-                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue,
+                        DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                             "0x{0:X6}", newAddress);
                         if (file[index] == 0x90) // Ignore comma entity
                             index++;
@@ -327,7 +327,7 @@ namespace EzCalcLink.Object
                 }
                 else if (NextRecordIdIs(0xED))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldHeader,
                         "Load Constant MAUs (LD)");
                     s = sections[currentSection];
                     int n = ReadNumber();
@@ -340,7 +340,7 @@ namespace EzCalcLink.Object
                         s.SetByte(file[index + i]);
                     }
                     nextExpectedAddress += n;
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue);
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue);
                     index += n;
                 }
                 /*else if (NextRecordIdIs(0xE3)) Zilog doesn't appear to use these.
@@ -349,7 +349,7 @@ namespace EzCalcLink.Object
                 else if (NextRecordIdIs(0xE2D7))*/
                 else if (NextRecordIdIs(0xE4))
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldHeader,
+                    DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldHeader,
                         "Load With Relocation (LR)");
                     s = sections[currentSection];
                     while (file[index] < 0xE0)
@@ -368,7 +368,7 @@ namespace EzCalcLink.Object
                             }
                             index += bytes;
                             nextExpectedAddress += bytes;
-                            DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue);
+                            DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue);
                         }
                         else
                         {
@@ -376,7 +376,7 @@ namespace EzCalcLink.Object
                                 " Relocation: ");
                             int index2 = index;
                             RelocationExpression e = ProcessZilogRelocation();
-                            DebugLogger.LogLine(" Expression: {0}", e);
+                            DebugLogger.LogLine("{1} byte(s): {0}", e, e.ReturnedByes);
                             s.Relocations.Add(index2, e);
                             s.SetByte(0); s.SetByte(0); s.SetByte(0);
                             nextExpectedAddress += 3;
@@ -499,10 +499,6 @@ namespace EzCalcLink.Object
 
             if (exps.Count == 0)
                 ShowFatalError("Error parsing relocation: Nothing parsed.");
-
-            foreach (var r in exps)
-                DebugLogger.LogLine(r.ToString());
-
             if (nestLevel != 0)
                 ShowFatalError("Error parsing relocation: unbalanced expression ({0}).", nestLevel);
 
