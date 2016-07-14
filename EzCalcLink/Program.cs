@@ -10,9 +10,10 @@ namespace EzCalcLink
     {
         static void Main(string[] args)
         {
-            //Omf695 obj = Omf695.LoadObjectFile("CHECKERS.lod");
+            //Omf695 obj = Omf695.LoadObjectFile("nokernel.lib");
             //Object.ObjectFile obj = Object.LoadOmf.FromFile("CHECKERS.lod");
-            Object.ObjectFile obj = Object.LoadOmf.FromFile("main.obj");
+            //Object.ObjectFile obj = Object.LoadOmf.FromFile("main.obj");
+            Object.LoadOmf.FromFile("main.obj");
             Console.ReadKey();
         }
     }

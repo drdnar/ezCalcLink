@@ -39,6 +39,7 @@ namespace EzCalcLink
             FatalError = 0x10000,
             VeryHighlyVerbose = 0x2000F,
             ExcludeVeryHighlyVerbose = 0x20000,
+            LibraryPart = 0x40000,
         }
 
         public static LogType CurrentLogType = LogType.Basic | LogType.FieldHeader;

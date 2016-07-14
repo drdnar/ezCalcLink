@@ -34,6 +34,11 @@ namespace EzCalcLink.Object
 
     public class LoadOmf
     {
+        // This class is fairly hacky.
+        // The issue is that the parser itself is quite stateful, but the state is only briefly needed.
+        // So to avoid passing state around in various static methods, this class instead uses its
+        // class nature to keep state, while only publicly exposing a static method to use it.
+        // It is slightly complicated because the parser uses subinstances of itself to parse .lib files.
         protected ObjectFile Obj = new ObjectFile();
 
         /// <summary>
@@ -124,9 +129,9 @@ namespace EzCalcLink.Object
 
 
         /// <summary>
-        /// Internal array of pointers to various parts.  Used only for the WhichPart() function.
+        /// Internal array of pointers to various parts.  Used for the WhichPart() function.
         /// </summary>
-        protected int[] Parts = new int[8];
+        protected List<int> Parts = new List<int>() { 0, 0, 0, 0, 0, 0, 0, 0 };
 
         /// <summary>
         /// Internally used for parsing files.
@@ -143,12 +148,23 @@ namespace EzCalcLink.Object
         /// </summary>
         protected int currentSection;
 
+        /// <summary>
+        /// True if the object file is a library, and so require alternate parsing logic.
+        /// </summary>
+        protected bool IsLibrary = false;
 
 
-        public static ObjectFile FromFile(string path)
+        /// <summary>
+        /// Parses an OMF file. For normal object files, this returns a single object file.
+        /// However, for .lib files, this returns a parsed list of all the subobject files in the .lib.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static List<ObjectFile> FromFile(string path)
         {
-            LoadOmf o = new LoadOmf(path);
-            return o.Obj;
+            List<ObjectFile> os = null;
+            new LoadOmf(path, ref os);
+            return os;
         }
 
 
@@ -161,10 +177,7 @@ namespace EzCalcLink.Object
         protected RelocationExpression RExpClassB1;
         //protected RelocationExpression RExpClassB3;
         
-        /// <summary>
-        /// Internal use only
-        /// </summary>
-        protected LoadOmf(string path)
+        protected void InitExprs()
         {
             // Initialize some global thingies.
             RExpClassA1 = new RelocationExpression();
@@ -181,12 +194,45 @@ namespace EzCalcLink.Object
             RExpClassB2.AddNumber(0x10); RExpClassB2.AddRightShift(); RExpClassB2.AddNumber(0xFF); RExpClassB2.AddAnd(); RExpClassB2.AddAdd();
             RExpClassB3 = new RelocationExpression();
             RExpClassB3.AddNumber(0xFF00); RExpClassB3.AddAnd(); RExpClassB3.AddAdd(); RExpClassB3.AddNumber(0x18); RExpClassB3.AddEndExpression();
-            
+        }
+
+        protected List<ObjectFile> ObjectFiles;
+
+        /// <summary>
+        /// Internal use only
+        /// </summary>
+        protected LoadOmf(string path, ref List<ObjectFile> os)
+        {
+            InitExprs();
+            if (os == null)
+                os = new List<ObjectFile>();
+            ObjectFiles = os;
             // Load file.  Might as well crash now if the file can't be read.
             DebugLogger.Log(DebugLogger.LogType.Basic, "Loading file ");
             DebugLogger.LogLine(path);
             file = System.IO.File.ReadAllBytes(path);
             Obj.Name = path;
+            ParseFile();
+            ObjectFiles.Add(Obj);
+        }
+        
+        
+        /// <summary>
+        /// Internal use only
+        /// </summary>
+        protected LoadOmf(string fileName, byte[] data, int baseAddress)
+        {
+            InitExprs();
+            this.file = data;
+            this.baseAddress = baseAddress;
+            // Load file.  Might as well crash now if the file can't be read.
+            Obj.Name = fileName;
+            ParseFile();
+        }
+
+
+        protected void ParseFile()
+        {
             // Copy address space list to output object
             foreach (KeyValuePair<int, AddressSpace> k in addressSpaces)
                 Obj.AddressSpaces.Add(k.Value);
@@ -209,6 +255,13 @@ namespace EzCalcLink.Object
             DebugLogger.Indent();
             ParseP1();
             DebugLogger.Unindent();
+
+            // Do something totally different if this is a .lib
+            if (IsLibrary)
+            {
+                ParseLibrary();
+                return;
+            }
 
             // Section information
             index = PtrToAsw2;
@@ -235,7 +288,7 @@ namespace EzCalcLink.Object
             DebugLogger.Unindent();
 
             DebugLogger.LogLine(DebugLogger.LogType.P6 | DebugLogger.LogType.P7 | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "P6 and P7 ignored.");
-            
+
             // Copy section list to output object
             DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose, "Section information:");
             foreach (KeyValuePair<int, Section> s in sections)
@@ -246,6 +299,32 @@ namespace EzCalcLink.Object
             // Copy symbol list to output object
             foreach (KeyValuePair<int, Symbol> s in symbols)
                 Obj.Symbols.Add(s.Value);
+        }
+
+
+        protected void ParseLibrary()
+        {
+            DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic,
+                "Parsing library subobjects. . . .");
+            for (int i = 2; i < Parts.Count; i++)
+            {
+                if (Parts[i] == 0)
+                    continue;
+                index = Parts[i];
+                if (!NextRecordIdIs(0xF814))
+                    ShowFatalError("Error parsing library: F814 record not found.");
+                DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    " N1: 0x{0:X}", ReadNumber());
+                DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    " N2: 0x{0:X}", ReadNumber());
+                int n3 = ReadNumber();
+                DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    " N3: 0x{0:X}", n3);
+                DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                    " N4: 0x{0:X}", ReadNumber());
+                LoadOmf omf = new LoadOmf(Obj.Name, file, n3);
+                ObjectFiles.Add(omf.Obj);
+            }
         }
 
 
@@ -286,18 +365,18 @@ namespace EzCalcLink.Object
                     }
                     else
                     {
-                        if (file[index++] != 0xD2) // R variable
+                        if (Read(index++) != 0xD2) // R variable
                             ShowFatalError("Parse PC location expression error: Did not get expected R token.");
                         DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                             " Expression: Section {0} + ", sections[ReadNumber()].Name);
-                        if (file[index] == 0x90) // Ignore comma entity
+                        if (Read(index) == 0x90) // Ignore comma entity
                             index++;
                         newAddress = ReadNumber();
                         DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
                             "0x{0:X6}", newAddress);
-                        if (file[index] == 0x90) // Ignore comma entity
+                        if (Read(index) == 0x90) // Ignore comma entity
                             index++;
-                        if (file[index++] != 0xA5) // Add function
+                        if (Read(index++) != 0xA5) // Add function
                             ShowFatalError("Parse PC location expression error: Did not end with expected add function.");
                     }
                     if (lastSection != currentSection)
@@ -336,8 +415,8 @@ namespace EzCalcLink.Object
                     for (int i = 0; i < n; i++)
                     {
                         DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
-                            "{0:X2}", file[index + i]);
-                        s.SetByte(file[index + i]);
+                            "{0:X2}", Read(index + i));
+                        s.SetByte(Read(index + i));
                     }
                     nextExpectedAddress += n;
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryVeryVerbose | DebugLogger.LogType.FieldValue);
@@ -352,7 +431,7 @@ namespace EzCalcLink.Object
                     DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldHeader,
                         "Load With Relocation (LR)");
                     s = sections[currentSection];
-                    while (file[index] < 0xE0)
+                    while (Read(index) < 0xE0)
                     {
                         if (NextItemIsNumber())
                         {
@@ -363,8 +442,8 @@ namespace EzCalcLink.Object
                             for (int i = 0; i < bytes; i++)
                             {
                                 DebugLogger.Log(DebugLogger.LogType.P5 | DebugLogger.LogType.VeryHighlyVerbose | DebugLogger.LogType.FieldValue,
-                                    "{0:X2}", file[index + i]);
-                                s.SetByte(file[index + i]);
+                                    "{0:X2}", Read(index + i));
+                                s.SetByte(Read(index + i));
                             }
                             index += bytes;
                             nextExpectedAddress += bytes;
@@ -397,9 +476,9 @@ namespace EzCalcLink.Object
             int nestLevel = 0;
             int expCount = 0;
             
-            while (file[index] < 0xDA)
+            while (Read(index) < 0xDA)
             {
-                switch (file[index])
+                switch (Read(index))
                 {
                     case 0x90: // Comma
                         index++; // Ignore it
@@ -454,7 +533,7 @@ namespace EzCalcLink.Object
                         break;
                     case 0xB9: // Escape
                         index++;
-                        switch (file[index++])
+                        switch (Read(index++))
                         {
                             case 6: // Right shift
                                 exps.Last().AddRightShift();
@@ -673,18 +752,18 @@ namespace EzCalcLink.Object
                     {
                         s.Resolved = false;
                         // I'm hard-coding the parser for relocatable symbol expressions to keep things a bit more simple.
-                        if (file[index++] != 0xD2) // 'R' variable ID
+                        if (Read(index++) != 0xD2) // 'R' variable ID
                             ShowFatalError("Relocatable symbol value expression parse error: Did not get expected section variable specifier.");
                         if (!NextItemIsNumber())
                             ShowFatalError("Relocatable symbol value expression parse error: Did not get a number as the expected argument to R-variable.");
                         if ((n2 = ReadNumber()) != currentSection)
                             ShowFatalError("Relocatable symbol value expression parse error: Expected R-variable section reference ({0}) to match current section ({1}).", n2, currentSection);
-                        if (file[index] == 0x90) // Ignore comma entity
+                        if (Read(index) == 0x90) // Ignore comma entity
                             index++;
                         s.Offset = ReadNumber();
-                        if (file[index] == 0x90) // Ignore comma entity
+                        if (Read(index) == 0x90) // Ignore comma entity
                             index++;
-                        if (file[index++] != 0xA5) // Add function
+                        if (Read(index++) != 0xA5) // Add function
                             ShowFatalError("Relocatable symbol value expression parse error: Expression did not end with expected add function.");
                         DebugLogger.LogLine(DebugLogger.LogType.P3 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                             " Symbol value: Base of section {0} + 0x{1:X6}", s.Section.Name, s.Offset);
@@ -915,7 +994,13 @@ namespace EzCalcLink.Object
                     switch (n3)
                     {
                         case 50:
-                            DebugLogger.LogLine("Creation date and time: {0}", new DateTime(ReadNumber() + 1900, ReadNumber(), ReadNumber(), ReadNumber(), ReadNumber(), ReadNumber()));
+                            int n1 = ReadNumber();
+                            int n2 = ReadNumber();
+                            n3 = ReadNumber();
+                            int n4 = ReadNumber();
+                            int n5 = ReadNumber();
+                            int n6 = ReadNumber();
+                            DebugLogger.LogLine("Creation date and time: {0}", new DateTime(1900 + n1, n2, n3 > 0 ? n3 : 1, n4, n5, n6));
                             break;
                         case 51:
                             DebugLogger.LogLine("Creation command line: {0}", ReadString());
@@ -973,8 +1058,8 @@ namespace EzCalcLink.Object
                             DebugLogger.LogLine("  Tool number: {0}", ReadNumber());
                             DebugLogger.LogLine("  Tool {0}", ReadNumber());
                             DebugLogger.LogLine("  Tool {0}", ReadNumber());
-                            if (file[index] >= 0xC1 && file[index] <= 0xDA)
-                                DebugLogger.LogLine("  Tool letter: {0}", (char)(file[index++] - 0xC1 + (int)'A'));
+                            if (Read(index) >= 0xC1 && Read(index) <= 0xDA)
+                                DebugLogger.LogLine("  Tool letter: {0}", (char)(Read(index++) - 0xC1 + (int)'A'));
                             break;
                         case 55:
                             DebugLogger.Log("Comments: {0}", ReadString());
@@ -991,6 +1076,10 @@ namespace EzCalcLink.Object
                 else if (NextRecordIdIs(0xE2CE))
                 {
                     ShowFatalError("P1: Record E2CE: I don't know what this is for.");
+                }
+                else if (NextRecordIdIs(0xE1))
+                {
+                    return;
                 }
                 else
                 {
@@ -1050,7 +1139,7 @@ namespace EzCalcLink.Object
                                     break;
                                 case 4:
                                     DebugLogger.LogLine(": Library");
-                                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unsupported");
+                                    IsLibrary = true;
                                     break;
                                 default:
                                     DebugLogger.LogLine(DebugLogger.LogType.Error, ": Unknown");
@@ -1109,18 +1198,18 @@ namespace EzCalcLink.Object
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose, "Address Descriptor (AD)");
                     int BitsPerMau = ReadNumber();
-                    if (BitsPerMau != 8)
+                    if (BitsPerMau != 8 && BitsPerMau != 0)
                         ShowFatalError("Bad byte size: {0}", BitsPerMau);
                     int MausPerAddress = ReadNumber();
-                    if (MausPerAddress != 3) // TODO: Short mode support
+                    if (MausPerAddress != 3 && MausPerAddress != 0) // TODO: Short mode support
                         ShowFatalError("Bad word size: {0} (only long mode supported; no Z80 mode support)", MausPerAddress);
-                    if (file[index] == 0xCC)
+                    if (Read(index) == 0xCC)
                     {
                         index++;
                         DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVeryVerbose,
                             " File claims to be little-endian.");
                     }
-                    else if (file[index] == 0xCD)
+                    else if (Read(index) == 0xCD)
                     {
                         index++;
                         DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVeryVerbose,
@@ -1134,7 +1223,10 @@ namespace EzCalcLink.Object
                 {
                     int asw = ReadNumber();
                     int offset = ReadNumber();
-                    Parts[asw] = offset;
+                    if (asw < 8)
+                        Parts[asw] = offset;
+                    else
+                        Parts.Add(offset);
                     DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Verbose,
                         "Assign Pointer to part {0}: {1:X8}", asw, Parts[asw]);
                     switch (asw)
@@ -1163,10 +1255,10 @@ namespace EzCalcLink.Object
                         case 7:
                             PtrToAsw7 = offset;
                             break;
-                        default:
+                        /*default:
                             DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.Error, "Unknown ASW: {0}", asw);
                             DebugLogger.LogLine(" Offset: {0:X8}", offset);
-                            break;
+                            break;*/
                     }   
                 }
                 else
@@ -1184,9 +1276,9 @@ namespace EzCalcLink.Object
             DebugLogger.Log(DebugLogger.LogType.Error | DebugLogger.LogType.Verbose, "Hex dump starting at 0x{0:X8}: ", index >= 16 ? index - 16 : 0);
             for (int i = index >= 16 ? -16 : -index; i < 16; i++)
                 if (i == 0) // Highlight index where dump is centered
-                    DebugLogger.Log(" {0:X2} ", file[index + i]);
+                    DebugLogger.Log(" {0:X2} ", Read(index + i));
                 else
-                    DebugLogger.Log("{0:X2}", file[index + i]);
+                    DebugLogger.Log("{0:X2}", Read(index + i));
             DebugLogger.LogLine();
         }
 
@@ -1240,6 +1332,13 @@ namespace EzCalcLink.Object
 
 
         #region File Parsing Helpers
+        protected int baseAddress = 0;
+        protected byte Read(int i)
+        {
+            return file[baseAddress + i];
+        }
+
+
         /// <summary>
         /// Returns which part of the file the given pointer is in.
         /// </summary>
@@ -1284,7 +1383,7 @@ namespace EzCalcLink.Object
         protected bool NextRecordIdIs(int id, bool eatField = true)
         {
             if (id < 0x100)
-                if (file[index] == id)
+                if (Read(index) == id)
                 {
                     if (eatField)
                         index++;
@@ -1293,7 +1392,7 @@ namespace EzCalcLink.Object
                 else
                     return false;
             if (id < 0x10000)
-                if (file[index] == id >> 8 && file[index + 1] == (id & 0xFF))
+                if (Read(index) == id >> 8 && Read(index + 1) == (id & 0xFF))
                 {
                     if (eatField)
                         index += 2;
@@ -1302,7 +1401,7 @@ namespace EzCalcLink.Object
                 else
                     return false;
             if (id < 0x1000000)
-                if (file[index] == id >> 16 && (file[index + 1] == (id >> 8 & 0xFF)) && file[index + 2] == (id & 0xFF))
+                if (Read(index) == id >> 16 && (Read(index + 1) == (id >> 8 & 0xFF)) && Read(index + 2) == (id & 0xFF))
                 {
                     if (eatField)
                         index += 3;
@@ -1310,7 +1409,7 @@ namespace EzCalcLink.Object
                 }
                 else
                     return false;
-            if (file[index] == id >> 24 && file[index + 1] == (id >> 16 & 0xFF) && file[index + 2] == (id >> 8 & 0xFF) && file[index + 3] == (id & 0xFF))
+            if (Read(index) == id >> 24 && Read(index + 1) == (id >> 16 & 0xFF) && Read(index + 2) == (id >> 8 & 0xFF) && Read(index + 3) == (id & 0xFF))
             {
                 if (eatField)
                     index += 4;
@@ -1329,7 +1428,7 @@ namespace EzCalcLink.Object
         /// <returns>True if the next item is a number</returns>
         protected bool NextItemIsNumber()
         {
-            return file[index] <= 0x84;
+            return Read(index) <= 0x84;
         }
 
 
@@ -1340,7 +1439,7 @@ namespace EzCalcLink.Object
         protected string ReadString()
         {
             int length = ReadNumber();
-            string s = ASCIIEncoding.ASCII.GetString(file, index, length);
+            string s = ASCIIEncoding.ASCII.GetString(file, index + baseAddress, length);
             index += length;
             return s;
         }
@@ -1362,7 +1461,7 @@ namespace EzCalcLink.Object
         /// <returns>The number.</returns>
         protected int ReadNumber()
         {
-            byte b = file[index++];
+            byte b = Read(index++);
             int r;
             if (b < 0x80)
                 return b;
@@ -1370,16 +1469,16 @@ namespace EzCalcLink.Object
                 return 0;
             if (b >= 0x89)
                 ShowFatalError("ReadNumber expected a number, did not get a number.");
-            r = file[index++];
+            r = Read(index++);
             if (b == 0x81)
                 return r;
-            r = (r << 8) | file[index++];
+            r = (r << 8) | Read(index++);
             if (b == 0x82)
                 return r;
-            r = (r << 8) | file[index++];
+            r = (r << 8) | Read(index++);
             if (b == 0x83)
                 return r;
-            r = (r << 8) | file[index++];
+            r = (r << 8) | Read(index++);
             if (b == 0x84)
                 return r;
             // Don't handle extra-large ints
@@ -1393,7 +1492,7 @@ namespace EzCalcLink.Object
         /// </summary>
         protected void SkipNumber()
         {
-            byte b = file[index++];
+            byte b = Read(index++);
             if (b <= 0x80)
                 return;
             if (b >= 0x89)

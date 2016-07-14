@@ -82,8 +82,14 @@ namespace EzCalcLink
         /// <summary>
         /// Internal array of pointers to various parts.  Used only for the WhichPart() function.
         /// </summary>
-        protected int[] Parts = new int[8];
+        protected List<int> Parts = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0 }; //int[] Parts = new int[8];
 
+        /// <summary>
+        /// True if this is a library file (.lib)
+        /// </summary>
+        bool IsLibrary = false;
+
+            
         /// <summary>
         /// Internally used for parsing files.
         /// </summary>
@@ -150,6 +156,12 @@ namespace EzCalcLink
             else
                 DebugLogger.LogLine("P1 not specified in index.");
             DebugLogger.Unindent();
+
+            if (IsLibrary)
+            {
+                parseLibrary();
+                return;
+            }
 
             // Section information
             DebugLogger.LogLine(DebugLogger.LogType.Basic | DebugLogger.LogType.FileHeader, "Seeking to P2 and parsing. . . .");
@@ -254,6 +266,110 @@ namespace EzCalcLink
 
         }
 
+
+        protected void parseLibrary()
+        {
+            DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic, "Library! {0:X8}", index);
+            for (int i = 2; i < Parts.Count; i++)
+            {
+                if (Parts[i] != 0)
+                {
+                    index = Parts[i];
+                    parseLibPart();
+                }
+            }
+            
+        }
+
+
+        protected void parseLibPart()
+        {
+            int part = WhichPart(index);
+            bool isEscapedValue;
+            while (WhichPart(index) == part)
+                if (NextRecordIdIs(0xF814))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic, "INDEX: {0:X8}", index);
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "N1: 0x{0:X}, N2: 0x{1:X}, N3: 0x{2:X}, N4: 0x{3:X}", ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue));
+                }
+                else if (NextRecordIdIs(0xE8))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic, "INDEX: {0:X8}", index);
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Public External Symbol (NI)");
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        "  Index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("  Name: {0}", ReadString());
+                }
+                else if (NextRecordIdIs(0xE9))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic, "INDEX: {0:X8}", index);
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader, 
+                        "External Reference (NX)");
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue, 
+                        "  Index: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine("  Name: {0}", ReadString());
+                }
+                else if (NextRecordIdIs(0xF9))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic, "INDEX: {0:X8}", index);
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader, 
+                        "Block End (BE)");
+                }
+                else if (NextRecordIdIs(0xE0))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic, "INDEX: {0:X8}", index);
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Module Begin (MB)");
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Processor: {0}", ReadString());
+                    DebugLogger.LogLine(" Module name: {0}", ReadString());
+                }
+                else if (NextRecordIdIs(0xEC))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Address Descriptor (AD)");
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Bits/MAU: {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(" MAUs/address: {0}", ReadNumber(out isEscapedValue));
+                    if (file[index] == 0xCD)
+                    {
+                        index++;
+                        DebugLogger.LogLine(" File is big-endian");
+                    }
+                    else if (file[index] == 0xCC)
+                    {
+                        index++;
+                        DebugLogger.LogLine(" File is little-endian");
+                    }
+                }
+                else if (NextRecordIdIs(0xE2D7))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Offset {0}", ReadNumber(out isEscapedValue));
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
+                        " Value: {0:X8}", ReadNumber(out isEscapedValue));
+                    
+                }
+                else
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.Basic, "INDEX: {0:X8}", index);
+                    debugDump();
+                    DebugLogger.LogLine();
+                    return;
+                }
+        }
+
+
+        protected void debugDump()
+        {
+            for (int i = 0; i < 32; i++)
+                DebugLogger.Log("{0:X2}", file[index + i]);
+            DebugLogger.LogLine();
+        }
+
+
         protected bool parseHeaderField()
         {
             //DebugLogger.Log("Parsing field {0}, ", file[index].ToString("X2"));
@@ -356,13 +472,14 @@ namespace EzCalcLink
                             break;
                         default:
                             DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown ASW: {0}", asw);
-                            DebugLogger.LogLine(DebugLogger.LogType.Error, " Offset: {0:X8}", ReadNumber(out isEscapedValue));
+                            Parts.Add(ReadNumber(out isEscapedValue));
+                            DebugLogger.LogLine(DebugLogger.LogType.Error, " Offset: {0:X8}", Parts.Last());
                             break;
                     }   
                 }
                 else
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown or unexpected field!");
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown or unexpected field! {0:X8}", index);
                     for (int i = 0; i < 32; i++)
                         DebugLogger.Log("{0:X2}", file[index + i]);
                     DebugLogger.LogLine();
@@ -1376,9 +1493,15 @@ namespace EzCalcLink
                     {
                         case 50:
                             DebugLogger.Log("Creation date and time: ");
-                            EnvironmentPart.DateTime = new DateTime(ReadNumber(out isEscapedValue) + 1900, ReadNumber(out isEscapedValue),
-                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue),
-                                 ReadNumber(out isEscapedValue), ReadNumber(out isEscapedValue));
+                            int n1 = ReadNumber(out isEscapedValue);
+                            int n2 = ReadNumber(out isEscapedValue);
+                            n3 = ReadNumber(out isEscapedValue);
+                            if (n3 < 1) n3 = 1;
+                            int n4 = ReadNumber(out isEscapedValue);
+                            int n5 = ReadNumber(out isEscapedValue);
+                            int n6 = ReadNumber(out isEscapedValue);
+                            
+                            EnvironmentPart.DateTime = new DateTime(n1, n2, n3, n4, n5, n6);
                             DebugLogger.LogLine(EnvironmentPart.DateTime.ToString());
                             break;
                         case 51:
@@ -1476,11 +1599,17 @@ namespace EzCalcLink
                         DebugLogger.Log("{0:X2}", file[index++]);
                     return false;
                 }
+                else if (NextRecordIdIs(0xE1))
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.P1 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldHeader,
+                        "Record E1, End of module");
+                    return true;
+                }
                 else
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown field.");
+                    DebugLogger.LogLine(DebugLogger.LogType.Error, "Unknown field. {0:X8}", index);
                     for (int i = 0; i < 32; i++)
-                        DebugLogger.Log("{0:X2}", file[index++]);
+                        DebugLogger.Log("{0:X2}", file[index + i]);
                     DebugLogger.LogLine();
                     return false;
                 }
@@ -1547,6 +1676,7 @@ namespace EzCalcLink
                                     break;
                                 case 4:
                                     DebugLogger.LogLine(": Library");
+                                    IsLibrary = true;
                                     break;
                                 default:
                                     DebugLogger.LogLine(DebugLogger.LogType.Error, ": Unknown");
