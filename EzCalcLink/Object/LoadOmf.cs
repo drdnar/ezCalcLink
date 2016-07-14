@@ -995,12 +995,23 @@ namespace EzCalcLink.Object
                     {
                         case 50:
                             int n1 = ReadNumber();
-                            int n2 = ReadNumber();
-                            n3 = ReadNumber();
+                            if (n1 < 1900)
+                                n1 += 1900;
+                            int n2 = ReadNumber() + 1;
+                            if (n2 > 12)
+                                n2 = 1;
+                            n3 = ReadNumber() + 1;
                             int n4 = ReadNumber();
                             int n5 = ReadNumber();
                             int n6 = ReadNumber();
-                            DebugLogger.LogLine("Creation date and time: {0}", new DateTime(1900 + n1, n2, n3 > 0 ? n3 : 1, n4, n5, n6));
+                            try
+                            {
+                                DebugLogger.LogLine("Creation date and time: {0}", new DateTime(n1, n2, n3 > 0 ? n3 : 1, n4, n5, n6));
+                            }
+                            catch
+                            {
+                                DebugLogger.LogLine("Creation date and time: {0} {1} {2} {3} {4} {5}", new DateTime(n1, n2, n3, n4, n5, n6));
+                            }
                             break;
                         case 51:
                             DebugLogger.LogLine("Creation command line: {0}", ReadString());
@@ -1213,7 +1224,7 @@ namespace EzCalcLink.Object
                     {
                         index++;
                         DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVeryVerbose,
-                            " File claims to be big-endian; that's probably a lie.");
+                            " File claims to be big-endian.");
                     }
                     else
                         DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.VeryVeryVerbose,

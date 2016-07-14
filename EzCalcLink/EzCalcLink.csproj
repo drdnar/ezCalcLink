@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="ContiguousMemory.cs" />
     <Compile Include="DebugLogger.cs" />
+    <Compile Include="Linker\Linker.cs" />
     <Compile Include="Object\AddressSpace.cs" />
     <Compile Include="Object\LoadOmf.cs" />
     <Compile Include="Object\ObjectFile.cs" />
@@ -59,6 +60,7 @@
     <Compile Include="Omf\OmfSymbolList.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="LibLoad\LlsFile.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
