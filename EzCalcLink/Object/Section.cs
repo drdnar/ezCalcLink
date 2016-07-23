@@ -34,6 +34,12 @@ namespace EzCalcLink.Object
 
 
         /// <summary>
+        /// Indicates whether the section is shared and all object files have absolute addresses already.
+        /// For VRAMy stuff and OS static vars, I guess.
+        /// </summary>
+        public bool SharedAbsolute = false;
+
+        /// <summary>
         /// Contains a list of all relocations found in the file
         /// </summary>
         public Dictionary<int, RelocationExpression> Relocations = new Dictionary<int, RelocationExpression>();
@@ -98,6 +104,9 @@ namespace EzCalcLink.Object
         public int ExpectedSize;
 
 
+        /// <summary>
+        /// Notation for assisting with parsing
+        /// </summary>
         public int NextAddress;
 
 
