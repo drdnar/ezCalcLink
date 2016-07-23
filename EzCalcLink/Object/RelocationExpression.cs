@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -80,6 +80,44 @@ namespace EzCalcLink.Object
             else
                 throw new RelocationParseException("Stack still has values on it after expression evaluated fully.");
         }
+
+
+        /// <summary>
+        /// Attempts to simplify a relocation expression
+        /// </summary>
+        public void SimplifyRelocation()
+        {
+            if (!(Expression[i] is GetSectionAddressFunction || Expression[i] is GetSymbolAddressFunction))
+                return;
+            Stack = new Stack<int>();
+            Stack.Push(0); // Add dummy initial offset
+            for (int i = 1; i < Expression.Length; i++)
+                if (Expression[i] is GetSectionAddressFunction || Expression[i] is GetSymbolAddressFunction)
+                    return;
+                else if (Expression[i] is NumberElement)
+                    Stack.Push(((NumberElement)Expression[i]).Value);
+                else if (Expression[i] is Function)
+                    ((Function)Expression[i]).Evaluate(this);
+                else
+                    throw new InvalidOperationException("Expression contains element that is neither a function nor a number.");
+            if (Stack.Count == 1)
+            {
+                Simplified = true;
+                var e = Expression[0];
+                Expression = new List<Element>();
+                Expression.Add(e);
+                Expression.Add(Add);
+                AddNumber(Stack.Pop());
+            }
+            else
+                throw new RelocationParseException("Stack still has values on it after expression evaluated fully.");           
+        }
+
+
+        /// <summary>
+        /// True if the expression has been simplified to reference + offset format.
+        /// </summary>
+        public bool Simplified = false;
 
 
         /// <summary>

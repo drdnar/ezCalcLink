@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -456,6 +456,7 @@ namespace EzCalcLink.Object
                             int index2 = index;
                             RelocationExpression e = ProcessZilogRelocation();
                             DebugLogger.LogLine("{1} byte(s): {0}", e, e.ReturnedByes);
+                            e.SimplifyRelocation();
                             s.Relocations.Add(index2, e);
                             s.SetByte(0); s.SetByte(0); s.SetByte(0);
                             nextExpectedAddress += 3;
@@ -916,6 +917,7 @@ namespace EzCalcLink.Object
                     Section s = sections[currentSection];
                     s.BaseAddress = ReadNumber();
                     s.Resolved = true;
+                    s.SharedAbsolute = true;
                     DebugLogger.LogLine(DebugLogger.LogType.P2 | DebugLogger.LogType.Verbose | DebugLogger.LogType.FieldValue,
                         " Section base address/offset: 0x{0:X6}", s.BaseAddress);
                 }
