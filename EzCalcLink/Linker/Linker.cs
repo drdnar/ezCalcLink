@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -63,12 +63,25 @@ namespace EzCalcLink.Linker
         public ObjectFile OutputObject = new ObjectFile();
 
 
+        /* General order:
+        PopulateAddressSpacesList();
+        PopulateSectionsList();
+        Have the input parser generate the sections order lists
+        OrderSectionsList();
+        CrossReferenceExternalSymbols();
+        ResolveSymbolAddresses();
+        ResolveStaticRelocations();
+        ApplyStaticRelocations();
+        */
+
+
         /// <summary>
         /// Populates the sections list from the input object files.
         /// Must be called before PopulateSectionsList()
         /// </summary>
-        protected void PopulateSectionsList()
+        protected void PopulateAddressSpacesList()
         {
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Populating address space list. . . .");
             // Just assume all of them have the same address spaces
             foreach (var a in ObjectFiles[0].AddressSpaces)
                 AddressSpaces.Add(a);
@@ -80,6 +93,7 @@ namespace EzCalcLink.Linker
         /// </summary>
         protected void PopulateSectionsList()
         {
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Populating sections list. . . .");
             // Build master list of sections
             foreach (var o in ObjectFiles)
             {
@@ -103,8 +117,9 @@ namespace EzCalcLink.Linker
                         if (s.SharedAbsolute) // No data to work with
                             continue;
                         t.ExpectedSize += s.ExpectedSize;
-                        
+
                     }
+                }
             }
         }
 
@@ -114,31 +129,70 @@ namespace EzCalcLink.Linker
         /// </summary>
         protected void OrderSectionsList()
         {
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Ordering sections. . . .");
             foreach (var sl in SectionOrders)
             {
-                if (sl.Length == 0)
+                if (sl.Count == 0)
                     continue;
-                sl[0].BaseAddress = 0;
-                for (int i = 1; i < sl.Length; i++)
+                for (int i = 1; i < sl.Count; i++)
                 {
                     sl[i].BaseAddress = sl[i - 1].BaseAddress + sl[i - 1].ExpectedSize;
-                    sl.Resolved = true;
+                    sl[i].Resolved = true;
                 }
+            }
+        }
+
+
+        /// <summary>
+        /// Builds a list of external symbol references.
+        /// </summary>
+        protected void CrossReferenceExternalSymbols()
+        {
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Cross-referencing symbols. . . .");
+            foreach (var obj in ObjectFiles)
+            {
+                foreach (var section in obj.Sections)
+                {
+                    foreach (var symbol in obj.Symbols)
+                    {
+                        if (symbol.External)
+                            continue;
+                        Symbols.Add(symbol);
+                    }
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Resolves the symbols local to each section
+        /// </summary>
+        protected void ResolveSymbolAddresses()
+        {
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Resolving symbols. . . .");
+            foreach (var s in Symbols)
+            {
+                if (s.External)
+                    continue;
+                s.Offset += s.Section.BaseAddress;
+                s.Resolved = true;
+                
             }
         }
 
 
         protected void ResolveStaticRelocations()
         {
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Resolving static relocations. . . .");
             foreach (var s in Sections)
             {
-                foreach (var r in Relocations) // r -> relocation
+                foreach (var r in s.Relocations) // r -> relocation
                 {
                     var a = r.Key; // a -> address
                     var v = r.Value; // v -> value
-                    s.Memory[a] = (byte)(v & 0xFF);
-                    s.Memory[a + 1] = (byte)((v >> 8) & 0xFF);
-                    s.Memory[a + 2] = (byte)(v >> 16);
+                    s.Memory[a] = (byte)(v.Value & 0xFF);
+                    s.Memory[a + 1] = (byte)((v.Value >> 8) & 0xFF);
+                    s.Memory[a + 2] = (byte)(v.Value >> 16);
                 }
             }
         }

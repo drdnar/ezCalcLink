@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -87,11 +87,11 @@ namespace EzCalcLink.Object
         /// </summary>
         public void SimplifyRelocation()
         {
-            if (!(Expression[i] is GetSectionAddressFunction || Expression[i] is GetSymbolAddressFunction))
+            if (!(Expression[0] is GetSectionAddressFunction || Expression[0] is GetSymbolAddressFunction))
                 return;
             Stack = new Stack<int>();
             Stack.Push(0); // Add dummy initial offset
-            for (int i = 1; i < Expression.Length; i++)
+            for (int i = 1; i < Expression.Count; i++)
                 if (Expression[i] is GetSectionAddressFunction || Expression[i] is GetSymbolAddressFunction)
                     return;
                 else if (Expression[i] is NumberElement)
@@ -104,7 +104,7 @@ namespace EzCalcLink.Object
             {
                 Simplified = true;
                 var e = Expression[0];
-                Expression = new List<Element>();
+                Expression.Clear();
                 Expression.Add(e);
                 Expression.Add(Add);
                 AddNumber(Stack.Pop());

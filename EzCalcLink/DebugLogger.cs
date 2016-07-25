@@ -40,6 +40,7 @@ namespace EzCalcLink
             VeryHighlyVerbose = 0x2000F,
             ExcludeVeryHighlyVerbose = 0x20000,
             LibraryPart = 0x40000,
+            LinkerPhase = 0x80000,
         }
 
         public static LogType CurrentLogType = LogType.Basic | LogType.FieldHeader;
