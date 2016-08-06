@@ -28,7 +28,7 @@ namespace EzCalcLink.Linker
 
 
         /// <summary>
-        /// Master list of output symbols
+        /// Master list of output sections
         /// </summary>
         public List<Section> Sections
         {
@@ -55,6 +55,12 @@ namespace EzCalcLink.Linker
         /// List of groupings and orderings of sections
         /// </summary>
         public List<List<Section>> SectionOrders = new List<List<Section>>();
+
+
+        /// <summary>
+        /// List of which sections are have absolute final positions, and associates those positions.
+        /// </summary>
+        public Dictionary<string, int> AbsoluteSectionPositions = new Dictionary<string, int>();
 
 
         /// <summary>

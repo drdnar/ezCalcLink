@@ -13,7 +13,7 @@ namespace EzCalcLink
             //Omf695 obj = Omf695.LoadObjectFile("nokernel.lib");
             //Object.ObjectFile obj = Object.LoadOmf.FromFile("CHECKERS.lod");
             //Object.ObjectFile obj = Object.LoadOmf.FromFile("main.obj");
-            Object.LoadOmf.FromFile("graphx.obj");
+            Object.LoadOmf.FromFile("graphx.lib");
 
             Console.ReadKey();
         }

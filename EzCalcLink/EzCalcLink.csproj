@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArgumentsParser.cs" />
     <Compile Include="ContiguousMemory.cs" />
     <Compile Include="DebugLogger.cs" />
     <Compile Include="Linker\Linker.cs" />
