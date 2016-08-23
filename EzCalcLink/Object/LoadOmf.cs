@@ -235,7 +235,8 @@ namespace EzCalcLink.Object
         {
             // Copy address space list to output object
             foreach (KeyValuePair<int, AddressSpace> k in addressSpaces)
-                Obj.AddressSpaces.Add(k.Value);
+                if (k.Value != null)
+                    Obj.AddressSpaces.Add(k.Value);
             // Parse file
             DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldHeader | DebugLogger.LogType.Basic, "Parsing header. . . .");
             DebugLogger.Indent();
@@ -293,12 +294,12 @@ namespace EzCalcLink.Object
             DebugLogger.LogLine(DebugLogger.LogType.P5 | DebugLogger.LogType.Verbose, "Section information:");
             foreach (KeyValuePair<int, Section> s in sections)
             {
-                Obj.Sections.Add(s.Value);
+                Obj.Sections.Add(s.Value.Name, s.Value);
                 DebugLogger.LogLine("Section {0}: AS: {1}, Base: {2:X6}, CM count: {3}, Reloc count: {4}", s.Value.Name, s.Value.AddressSpace.Name, s.Value.BaseAddress, s.Value.Data.Count, s.Value.Relocations.Count);
             }
             // Copy symbol list to output object
             foreach (KeyValuePair<int, Symbol> s in symbols)
-                Obj.Symbols.Add(s.Value);
+                Obj.Symbols.Add(s.Value.Name, s.Value);
         }
 
 

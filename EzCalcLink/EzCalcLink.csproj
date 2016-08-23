@@ -45,7 +45,9 @@
     <Compile Include="ContiguousMemory.cs" />
     <Compile Include="DebugLogger.cs" />
     <Compile Include="Linker\Linker.cs" />
+    <Compile Include="Linker\NameResolver.cs" />
     <Compile Include="Object\AddressSpace.cs" />
+    <Compile Include="Object\INamed.cs" />
     <Compile Include="Object\LoadOmf.cs" />
     <Compile Include="Object\ObjectFile.cs" />
     <Compile Include="Object\Relocation.cs" />

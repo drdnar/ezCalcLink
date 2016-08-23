@@ -9,13 +9,24 @@ namespace EzCalcLink.Object
     /// <summary>
     /// Contains information about a symbol
     /// </summary>
-    public class Symbol
+    public class Symbol : INamed
     {
+        protected string _Name;
         /// <summary>
         /// The symbol's name, used to resolve references
         /// </summary>
-        public string Name;
-
+        public string Name
+        {
+            get
+            {
+                return _Name;
+            }
+            set
+            {
+                _Name = value;
+            }
+        }
+        
         /// <summary>
         /// The address space the symbol lives in
         /// </summary>

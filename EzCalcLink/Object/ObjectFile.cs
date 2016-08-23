@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EzCalcLink.Linker;
 
 namespace EzCalcLink.Object
 {
@@ -19,17 +20,17 @@ namespace EzCalcLink.Object
         /// <summary>
         /// Lists different types of address spaces
         /// </summary>
-        public List<AddressSpace> AddressSpaces = new List<AddressSpace>();
+        public NameResolver<AddressSpace> AddressSpaces = new NameResolver<AddressSpace>();
 
         /// <summary>
         /// Contains a list of different sections
         /// </summary>
-        public List<Section> Sections = new List<Section>();
+        public NameResolver<Section> Sections = new NameResolver<Section>();
 
         /// <summary>
         /// Contains a list of all symbols
         /// </summary>
-        public List<Symbol> Symbols = new List<Symbol>();
+        public NameResolver<Symbol> Symbols = new NameResolver<Symbol>();
 
         /// <summary>
         /// True if the object file contains relocation information

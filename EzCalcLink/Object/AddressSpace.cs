@@ -9,9 +9,20 @@ namespace EzCalcLink.Object
     /// <summary>
     /// This is simply a marker. I guess it could be an enum.
     /// </summary>
-    public class AddressSpace
+    public class AddressSpace : INamed
     {
-        public string Name;
+        protected string _Name;
+        public string Name
+        {
+            get
+            {
+                return _Name;
+            }
+            set
+            {
+                _Name = value;
+            }
+        }
         public int MauSize;
     }
 }

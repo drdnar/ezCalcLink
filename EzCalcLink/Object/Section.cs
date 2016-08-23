@@ -3,19 +3,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EzCalcLink.Linker;
 
 namespace EzCalcLink.Object
 {
     /// <summary>
     /// Contains a section's data and relocations list
     /// </summary>
-    public class Section
+    public class Section : INamed
     {
+        protected string _Name;
         /// <summary>
         /// Specifies the section's name
         /// </summary>
-        public string Name;
-
+        public string Name
+        {
+            get
+            {
+                return _Name;
+            }
+            set
+            {
+                _Name = value;
+            }
+        }
+        
         /// <summary>
         /// References the address space this section lives in
         /// </summary>
