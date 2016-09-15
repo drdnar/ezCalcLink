@@ -105,25 +105,24 @@ namespace EzCalcLink.Linker
             {
                 foreach (var s in o.Sections)
                 {
-                    Section ss = s.Value;
                     Section t;
-                    if (!Sections.TryGet(ss.Name, out t))
+                    if (!Sections.TryGet(s.Name, out t))
                     {
                         var n = new Section();
-                        n.Name = ss.Name;
-                        n.ExpectedSize = ss.ExpectedSize;
-                        n.AddressSpace = AddressSpaces[ss.AddressSpace.Name];
-                        if (!(n.SharedAbsolute = ss.SharedAbsolute))
+                        n.Name = s.Name;
+                        n.ExpectedSize = s.ExpectedSize;
+                        n.AddressSpace = AddressSpaces[s.AddressSpace.Name];
+                        if (!(n.SharedAbsolute = s.SharedAbsolute))
                             continue;
-                        n.BaseAddress = ss.BaseAddress;
+                        n.BaseAddress = s.BaseAddress;
                         n.Resolved = true;
                     }
                     else
                     {
                         // Figure out if we need to increase the section size
-                        if (ss.SharedAbsolute) // No data to work with
+                        if (s.SharedAbsolute) // No data to work with
                             continue;
-                        t.ExpectedSize += ss.ExpectedSize;
+                        t.ExpectedSize += s.ExpectedSize;
                         // TODO: Whatever more needs to go here
                     }
                 }
@@ -158,15 +157,13 @@ namespace EzCalcLink.Linker
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Cross-referencing symbols. . . .");
             foreach (var obj in ObjectFiles)
             {
-                foreach (var skp in obj.Sections)
+                foreach (var section in obj.Sections)
                 {
-                    var section = skp.Value;
-                    foreach (var sykp in obj.Symbols)
+                    foreach (var symbol in obj.Symbols)
                     {
-                        var symbol = sykp.Value;
                         if (symbol.External)
                             continue;
-                        Symbols.Add(symbol.Name, symbol);
+                        Symbols.Add(symbol);
                     }
                 }
             }
@@ -179,9 +176,8 @@ namespace EzCalcLink.Linker
         protected void ResolveSymbolAddresses()
         {
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Resolving symbols. . . .");
-            foreach (var skp in Symbols)
+            foreach (var s in Symbols)
             {
-                var s = skp.Value;
                 if (s.External)
                     continue;
                 s.Offset += s.Section.BaseAddress;
@@ -194,9 +190,8 @@ namespace EzCalcLink.Linker
         protected void ResolveStaticRelocations()
         {
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Resolving static relocations. . . .");
-            foreach (var skp in Sections)
+            foreach (var s in Sections)
             {
-                var s = skp.Value;
                 foreach (var r in s.Relocations) // r -> relocation
                 {
                     var a = r.Key; // a -> address
@@ -211,9 +206,8 @@ namespace EzCalcLink.Linker
 
         protected void ApplyStaticRelocations()
         {
-            foreach (var skp in Sections)
+            foreach (var s in Sections)
             {
-                var s = skp.Value;
                 if (!s.Resolved)
                     throw new Exception("Unresolved.");
                 

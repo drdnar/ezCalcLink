@@ -11,14 +11,14 @@ namespace EzCalcLink.Linker
     /// Resolves names, while allowing the underlying look up algorithm to be changed
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class NameResolver<T> : ICollection<T> where T : INamed
+    public class NameResolver<T> : IEnumerable<T> where T : INamed
     {
         private List<T> Symbols = new List<T>();
         private Dictionary<string, T> SymbolsByName = new Dictionary<string, T>();
         private Dictionary<string, bool> SymbolReferenced = new Dictionary<string, bool>();
 
         
-        System.Collections.IEnumerator System.Collections.IEnumerator.GetEnumerator()
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return this.GetEnumerator();
         }
