@@ -213,7 +213,8 @@ namespace EzCalcLink.Object
             file = System.IO.File.ReadAllBytes(path);
             Obj.Name = path;
             ParseFile();
-            ObjectFiles.Add(Obj);
+            if (!IsLibrary)
+                ObjectFiles.Add(Obj);
         }
         
         
@@ -324,6 +325,7 @@ namespace EzCalcLink.Object
                 DebugLogger.LogLine(DebugLogger.LogType.LibraryPart | DebugLogger.LogType.VeryVerbose | DebugLogger.LogType.FieldValue,
                     " N4: 0x{0:X}", ReadNumber());
                 LoadOmf omf = new LoadOmf(Obj.Name, file, n3);
+                omf.Obj.IsLibraryMember = true;
                 ObjectFiles.Add(omf.Obj);
             }
         }
@@ -1206,7 +1208,8 @@ namespace EzCalcLink.Object
                 ShowFatalError("File does not begin with record 0xE0 (Module Beginning).");
             }
             DebugLogger.LogLine(DebugLogger.LogType.FileHeader | DebugLogger.LogType.FieldValue | DebugLogger.LogType.Verbose, "Processor: {0}", ReadString());
-            DebugLogger.LogLine("Module name: {0}", ReadString());
+            Obj.ModuleName = ReadString();
+            DebugLogger.LogLine("Module name: {0}", Obj.ModuleName);
             while (WhichPart(index) == -1)
                 if (NextRecordIdIs(0xEC)) // Address Descriptor
                 {

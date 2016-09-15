@@ -18,6 +18,11 @@ namespace EzCalcLink.Object
         public string Name;
 
         /// <summary>
+        /// Gives the "module name" of a file, usually source code file name.
+        /// </summary>
+        public string ModuleName;
+
+        /// <summary>
         /// Lists different types of address spaces
         /// </summary>
         public NameResolver<AddressSpace> AddressSpaces = new NameResolver<AddressSpace>();
