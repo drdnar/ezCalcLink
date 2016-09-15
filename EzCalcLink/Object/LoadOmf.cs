@@ -458,8 +458,9 @@ namespace EzCalcLink.Object
                                 " Relocation: ");
                             int index2 = index;
                             RelocationExpression e = ProcessZilogRelocation();
-                            DebugLogger.LogLine("{1} byte(s): {0}", e, e.ReturnedByes);
+                            DebugLogger.Log("{1} byte(s): {0}; ", e, e.ReturnedByes);
                             e.SimplifyRelocation();
+                            DebugLogger.LogLine("Simplified: {0}", e);
                             s.Relocations.Add(index2, e);
                             s.SetByte(0); s.SetByte(0); s.SetByte(0);
                             nextExpectedAddress += 3;

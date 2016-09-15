@@ -106,8 +106,12 @@ namespace EzCalcLink.Object
                 var e = Expression[0];
                 Expression.Clear();
                 Expression.Add(e);
-                Expression.Add(Add);
-                AddNumber(Stack.Pop());
+                var offset = Stack.Pop();
+                if (offset != 0)
+                {
+                    AddNumber(offset);
+                    Expression.Add(Add);
+                }
             }
             else
                 throw new RelocationParseException("Stack still has values on it after expression evaluated fully.");           
