@@ -25,9 +25,9 @@ namespace EzCalcLink.LibLoad
         public byte LibraryVersion;
         public string LibraryName;
 
-        protected string CurrentSection = "";
-        protected static Regex SectionHeaderExp = new Regex(@"\[(?<sname>\w+)\]");
-        protected static Regex KeyValueExp = new Regex(@"(?<key>\w+)\s*=\s*(?<value>\w*)");
+        private string CurrentSection = "";
+        private static Regex SectionHeaderExp = new Regex(@"\[(?<sname>\w+)\]");
+        private static Regex KeyValueExp = new Regex(@"(?<key>\w+)\s*=\s*(?<value>\w*)");
 
         public LlsFile(string path)
         {

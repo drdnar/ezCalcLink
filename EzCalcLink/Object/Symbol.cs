@@ -11,7 +11,7 @@ namespace EzCalcLink.Object
     /// </summary>
     public class Symbol : INamed
     {
-        protected string _Name;
+        private string _Name;
         /// <summary>
         /// The symbol's name, used to resolve references
         /// </summary>

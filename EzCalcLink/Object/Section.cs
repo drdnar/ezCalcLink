@@ -12,7 +12,7 @@ namespace EzCalcLink.Object
     /// </summary>
     public class Section : INamed
     {
-        protected string _Name;
+        private string _Name;
         /// <summary>
         /// Specifies the section's name
         /// </summary>
