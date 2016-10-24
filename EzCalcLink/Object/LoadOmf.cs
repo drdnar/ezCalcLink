@@ -300,7 +300,13 @@ namespace EzCalcLink.Object
             }
             // Copy symbol list to output object
             foreach (KeyValuePair<int, Symbol> s in symbols)
+            {
                 Obj.Symbols.Add(s.Value);
+                if (s.Value.External)
+                    Obj.ExternalSymbols.Add(s.Value);
+                else
+                    Obj.LocalSymbols.Add(s.Value);
+            }
         }
 
 

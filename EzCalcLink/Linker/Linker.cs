@@ -14,9 +14,15 @@ namespace EzCalcLink.Linker
         /// </summary>
         public List<ObjectFile> ObjectFiles = new List<ObjectFile>();
 
-        
+
         /// <summary>
-        /// Master list of output symbols
+        /// List of optional libraries
+        /// </summary>
+        public List<ObjectFile> Libraries = new List<ObjectFile>();
+
+
+        /// <summary>
+        /// Master list of output symbols.  This list cross-references symbols
         /// </summary>
         public NameResolver<Symbol> Symbols
         {
@@ -37,7 +43,7 @@ namespace EzCalcLink.Linker
                 return OutputObject.Sections;
             }
         }
- 
+
 
         /// <summary>
         /// Master list of output address spaces
@@ -52,7 +58,9 @@ namespace EzCalcLink.Linker
 
 
         /// <summary>
-        /// List of groupings and orderings of sections
+        /// List of groupings and orderings of sections.
+        /// Inner list is sections to be combined into one section, outer list
+        /// is non-combined sections.
         /// </summary>
         public List<List<Section>> SectionOrders = new List<List<Section>>();
 
@@ -74,11 +82,91 @@ namespace EzCalcLink.Linker
         PopulateSectionsList();
         Have the input parser generate the sections order lists
         OrderSectionsList();
+            Note: You don't know the size of the sections until you know the
+            optional libraries to include.  
         CrossReferenceExternalSymbols();
         ResolveSymbolAddresses();
         ResolveStaticRelocations();
         ApplyStaticRelocations();
         */
+
+
+        public void LinkTest()
+        {
+            RemovedUnusedLibraries();
+            PopulateAddressSpacesList();
+            PopulateSectionsList();
+        }
+
+
+        /// <summary>
+        /// Determines which libs are unused, and removes them from the list of
+        /// object files to be linked.
+        /// </summary>
+        protected void RemovedUnusedLibraries()
+        {
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Checking which libraries need to be included. . . .");
+            // Cache a dictionary mapping strings to symbol names.
+            // This makes it a lot faster to figure out if a symbol in an
+            // object file can be fulfilled with a library.
+            var libSyms = new Dictionary<string, Symbol>();
+            foreach (var l in Libraries)
+                foreach (var s in l.Symbols)
+                    if (!s.External)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "Library symbol: {0}", s.Name);
+                        libSyms.Add(s.Name, s);
+                    }
+            // Libraries may also require other libraries, so we have to keep
+            // doing passes of library symbol names until no more libraries are
+            // required.
+            List<ObjectFile> recurseList = new List<ObjectFile>();
+            foreach (var of in ObjectFiles)
+                foreach (var s in of.ExternalSymbols)
+                {
+                    Symbol ls;
+                    if (libSyms.TryGetValue(s.Name, out ls))
+                        if (!recurseList.Contains(ls.ObjectFile))
+                        {
+                            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose,
+                                "Object file {0} requires symbol {1} found in lib {2}",
+                                of.Name, s.Name, ls.ObjectFile.Name);
+                            recurseList.Add(ls.ObjectFile);
+                        }
+                }
+            // Now we scan each library to see if it requires more libraries.
+            List<ObjectFile> newRecurseList = new List<ObjectFile>();
+            while (recurseList.Count > 0)
+            {
+                // Add any libraries we found we need to the object list.
+                // Note that this will always be added if there are libraries to add because anytime
+                // libraries are added, there's then one more pass.
+                ObjectFiles.AddRange(recurseList);
+                // We also need to scan the added libraries to see if they require libraries of their own.
+                // But we don't need to check libraries we've already scanned again.
+                // So newRecurseList is the list of libraries to scan when we're done with this list.
+                newRecurseList.Clear();
+                // Now scan the libraries, just like before.
+                foreach (var of in recurseList)
+                    foreach (var s in of.ExternalSymbols)
+                    {
+                        Symbol ls;
+                        if (libSyms.TryGetValue(s.Name, out ls))
+                            if (!recurseList.Contains(ls.ObjectFile))
+                            {
+                                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose,
+                                    "Library {0} requires symbol {1} found in lib {2}",
+                                    of.Name, s.Name, ls.ObjectFile.Name);
+                                newRecurseList.Add(ls.ObjectFile);
+                            }
+                    }
+                // Instead of creating new List objects every pass, just exchange the two.
+                // The old recurseList becomes the new newRecurseList, which gets .Clear()ed before use.
+                var temp = recurseList;
+                recurseList = newRecurseList;
+                newRecurseList = temp;
+            }
+        }
 
 
         /// <summary>
@@ -90,7 +178,10 @@ namespace EzCalcLink.Linker
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Populating address space list. . . .");
             // Just assume all of them have the same address spaces
             foreach (var a in ObjectFiles[0].AddressSpaces)
+            {
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, "Added address space: {0}", a.Name);
                 AddressSpaces.Add(a);
+            }
         }
 
 
@@ -103,15 +194,21 @@ namespace EzCalcLink.Linker
             // Build master list of sections
             foreach (var o in ObjectFiles)
             {
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, "Scanning sections in object {0}. . . .", o.ModuleName);
                 foreach (var s in o.Sections)
                 {
                     Section t;
                     if (!Sections.TryGet(s.Name, out t))
                     {
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, " New section: {0}", s.Name);
+                        // If the section does not already exist in the output
+                        // object, then create it.
                         var n = new Section();
                         n.Name = s.Name;
-                        n.ExpectedSize = s.ExpectedSize;
+                        //n.ExpectedSize = s.ExpectedSize; // We can't populate the expected size until scanning the library list
                         n.AddressSpace = AddressSpaces[s.AddressSpace.Name];
+                        Sections.Add(n);
+                        // If shared section (e.g. MMIO), nothing more to do.
                         if (!(n.SharedAbsolute = s.SharedAbsolute))
                             continue;
                         n.BaseAddress = s.BaseAddress;
@@ -119,11 +216,12 @@ namespace EzCalcLink.Linker
                     }
                     else
                     {
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, " Section {0} already exists", s.Name);
+                        // The section already exists, so expand it.
                         // Figure out if we need to increase the section size
                         if (s.SharedAbsolute) // No data to work with
                             continue;
-                        t.ExpectedSize += s.ExpectedSize;
-                        // TODO: Whatever more needs to go here
+                        //t.ExpectedSize += s.ExpectedSize;
                     }
                 }
             }
@@ -136,6 +234,8 @@ namespace EzCalcLink.Linker
         protected void OrderSectionsList()
         {
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Ordering sections. . . .");
+            // TODO: Combine sections from different input objects.
+            // Combine sections that need to be combined serially.
             foreach (var sl in SectionOrders)
             {
                 if (sl.Count == 0)
@@ -182,7 +282,7 @@ namespace EzCalcLink.Linker
                     continue;
                 s.Offset += s.Section.BaseAddress;
                 s.Resolved = true;
-                
+
             }
         }
 
@@ -210,7 +310,7 @@ namespace EzCalcLink.Linker
             {
                 if (!s.Resolved)
                     throw new Exception("Unresolved.");
-                
+
             }
         }
     }

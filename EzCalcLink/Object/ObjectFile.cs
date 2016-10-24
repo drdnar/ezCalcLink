@@ -37,6 +37,20 @@ namespace EzCalcLink.Object
         /// </summary>
         public NameResolver<Symbol> Symbols = new NameResolver<Symbol>();
 
+
+        /// <summary>
+        /// Contains a list of all symbols that are defined in this object file.
+        /// </summary>
+        public NameResolver<Symbol> LocalSymbols = new NameResolver<Symbol>();
+
+
+        /// <summary>
+        /// Contains a list of all symbols that are NOT defined in this object
+        /// file, and require linking with an external object file.
+        /// </summary>
+        public NameResolver<Symbol> ExternalSymbols = new NameResolver<Symbol>();
+
+
         /// <summary>
         /// True if the object file contains relocation information
         /// </summary>
@@ -53,5 +67,11 @@ namespace EzCalcLink.Object
         /// If marked true, the linker should exclude this ObjectFile's data if not referenced.
         /// </summary>
         public bool IsLibraryMember = false;
+
+
+        /// <summary>
+        /// If a library, set to true when a reference to this library is found.
+        /// </summary>
+        public bool LibraryMemberReferenced = false;
     }
 }
