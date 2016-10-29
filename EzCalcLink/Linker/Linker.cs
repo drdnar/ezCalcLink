@@ -9,6 +9,22 @@ namespace EzCalcLink.Linker
 {
     public class Linker
     {
+        public Linker()
+        {
+            // Set up the object that contains defines.
+            DefinesObject.AddressSpaces.Add(new AddressSpace() { Name = "EXTIO", MauSize = 2 });
+            DefinesObject.AddressSpaces.Add(new AddressSpace() { Name = "INTIO", MauSize = 1 });
+            DefinesObject.AddressSpaces.Add(new AddressSpace() { Name = "ROM", MauSize = 3 });
+            DefinesObject.AddressSpaces.Add(new AddressSpace() { Name = "RAM", MauSize = 3 });
+            DefinesObject.Sections.Add(new Section() { Name = "STRSECT", ExpectedSize = 0, Resolved = true, AddressSpace = DefinesObject.AddressSpaces["RAM"]});
+            DefinesObject.Sections.Add(new Section() { Name = "CODE", ExpectedSize = 0, Resolved = true, AddressSpace = DefinesObject.AddressSpaces["ROM"] });
+            DefinesObject.Sections.Add(new Section() { Name = "TEXT", ExpectedSize = 0, Resolved = true, AddressSpace = DefinesObject.AddressSpaces["ROM"] });
+            DefinesObject.Sections.Add(new Section() { Name = "DATA", ExpectedSize = 0, Resolved = true, AddressSpace = DefinesObject.AddressSpaces["RAM"] });
+            DefinesObject.Sections.Add(new Section() { Name = "BSS", ExpectedSize = 0, Resolved = true, AddressSpace = DefinesObject.AddressSpaces["RAM"] });
+            
+        }
+
+
         /// <summary>
         /// List of files being linked
         /// </summary>
@@ -19,6 +35,15 @@ namespace EzCalcLink.Linker
         /// List of optional libraries
         /// </summary>
         public List<ObjectFile> Libraries = new List<ObjectFile>();
+
+
+        /// <summary>
+        /// List of symbols passed to the linker by the user
+        /// </summary>
+        public NameResolver<Symbol> DefinedSymbols = new NameResolver<Symbol>();
+
+
+        public ObjectFile DefinesObject = new ObjectFile();
 
 
         /// <summary>
@@ -96,6 +121,14 @@ namespace EzCalcLink.Linker
             RemovedUnusedLibraries();
             PopulateAddressSpacesList();
             PopulateSectionsList();
+            foreach (ObjectFile of in ObjectFiles)
+            {
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "Symbols in object file {0}:", of.Name);
+                foreach (Symbol s in of.LocalSymbols)
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "  Address space: {3}, Section: {4}, Symbol name: {0}, Offset: {1:X6}, Resolved: {2}", s.Name, s.Offset, s.Resolved, s.AddressSpace.Name, s.Section.Name);
+                }
+            }
         }
 
 
