@@ -87,7 +87,13 @@ namespace EzCalcLink.Linker
         /// Inner list is sections to be combined into one section, outer list
         /// is non-combined sections.
         /// </summary>
-        public List<List<Section>> SectionOrders = new List<List<Section>>();
+        public List<List<string>> SectionOrders = new List<List<string>>();
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        protected List<List<Section>> SectionObjectOrders = new List<List<Section>>();
 
 
         /// <summary>
@@ -118,16 +124,35 @@ namespace EzCalcLink.Linker
 
         public void LinkTest()
         {
+            foreach (var o in ObjectFiles)
+            {
+                foreach (var s in o.Sections)
+                    s.Name = s.Name.ToUpper();
+            }
+
             RemovedUnusedLibraries();
             PopulateAddressSpacesList();
             PopulateSectionsList();
-            foreach (ObjectFile of in ObjectFiles)
+            /*foreach (ObjectFile of in ObjectFiles)
             {
                 DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "Symbols in object file {0}:", of.Name);
                 foreach (Symbol s in of.LocalSymbols)
                 {
                     DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "  Address space: {3}, Section: {4}, Symbol name: {0}, Offset: {1:X6}, Resolved: {2}", s.Name, s.Offset, s.Resolved, s.AddressSpace.Name, s.Section.Name);
                 }
+            }*/
+            OrderSectionsList();
+            foreach (var s in Sections)
+            {
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "Output section {0}:", s.Name);
+                DebugLogger.LogLine("  Relocatable: {0}", s.Relocatable);
+                DebugLogger.LogLine("  Shared-Absolute: {0}", s.SharedAbsolute);
+                DebugLogger.LogLine("  Base Address: 0x{0:X6}", s.BaseAddress);
+                DebugLogger.LogLine("  Expected Size: 0x{0:X6} ({0}d)", s.ExpectedSize);
+                DebugLogger.LogLine("  Next Address: 0x{0:X6}", s.NextAddress);
+                
+
+
             }
         }
 
@@ -230,15 +255,15 @@ namespace EzCalcLink.Linker
                 DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, "Scanning sections in object {0}. . . .", o.ModuleName);
                 foreach (var s in o.Sections)
                 {
-                    Section t;
+                    Section t; // t -> (comes after S)
                     if (!Sections.TryGet(s.Name, out t))
                     {
                         DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, " New section: {0}", s.Name);
                         // If the section does not already exist in the output
                         // object, then create it.
-                        var n = new Section();
+                        var n = new Section(); // n -> New (section)
                         n.Name = s.Name;
-                        //n.ExpectedSize = s.ExpectedSize; // We can't populate the expected size until scanning the library list
+                        n.ExpectedSize = s.ExpectedSize;
                         n.AddressSpace = AddressSpaces[s.AddressSpace.Name];
                         Sections.Add(n);
                         // If shared section (e.g. MMIO), nothing more to do.
@@ -254,7 +279,7 @@ namespace EzCalcLink.Linker
                         // Figure out if we need to increase the section size
                         if (s.SharedAbsolute) // No data to work with
                             continue;
-                        //t.ExpectedSize += s.ExpectedSize;
+                        t.ExpectedSize += s.ExpectedSize;
                     }
                 }
             }
@@ -267,16 +292,31 @@ namespace EzCalcLink.Linker
         protected void OrderSectionsList()
         {
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Ordering sections. . . .");
+
+            foreach (var ss in SectionOrders) // ss -> Sections list, Strings
+            {
+                var so = new List<Section>(); // so -> Section list, Objects
+                SectionObjectOrders.Add(so);
+                foreach (var sss in ss) // sss -> SubSections list, Strings
+                {                       // I have had it with these mother****ing snakes on this mother****ing iterator! -- Samuel L. Jackson, on EzCalcLink
+                    so.Add(Sections[sss.ToUpper()]);
+                }
+            }
+
             // TODO: Combine sections from different input objects.
             // Combine sections that need to be combined serially.
-            foreach (var sl in SectionOrders)
+            foreach (var sl in SectionObjectOrders) // sl -> Section List
             {
                 if (sl.Count == 0)
                     continue;
+
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "  Section:");
+
                 for (int i = 1; i < sl.Count; i++)
                 {
+                    DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "    {0}", sl[i].Name);
                     sl[i].BaseAddress = sl[i - 1].BaseAddress + sl[i - 1].ExpectedSize;
-                    sl[i].Resolved = true;
+                    //sl[i].Resolved = true;
                 }
             }
         }

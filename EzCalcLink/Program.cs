@@ -22,9 +22,9 @@ namespace EzCalcLink
             DefineData[] defines = { 
                                        new DefineData() { Name = "__low_bss", Value = 0xD031F6, AddressSpace = "RAM", Section = "BSS" },  
                                    };
-            
-            
-            string[] inFiles = new string[] { "cstartup.obj", "fileioc.obj", "graphx.obj", "libheader.obj", "logo.obj", "logo_gfx.obj", "main.obj", "simplech.obj", "fileioc.lib", "graphx.lib" };
+
+
+            string[] inFiles = new string[] { "cstartup.obj", "fileioc.obj", "graphx.obj", "libheader.obj", "logo.obj", "logo_gfx.obj", "main.obj", "simplech.obj", "iconc.obj", "fileioc.lib", "graphx.lib" };
             foreach (var f in inFiles)
             {
                 var o = Object.LoadOmf.FromFile(f);
@@ -33,7 +33,7 @@ namespace EzCalcLink
                 else
                     linker.Libraries.AddRange(o);
             }
-
+            
             foreach (var d in defines)
             {
                 linker.DefinesObject.LocalSymbols.Add(new Object.Symbol()
@@ -47,6 +47,21 @@ namespace EzCalcLink
                     Name = d.Name
                 });
             }
+
+            linker.SectionOrders = new List<List<string>>() {
+                new List<string>() { 
+                    ".header", ".icon", ".launcher", ".libs", ".graphx", ".graphx_header", ".fileioc", ".fileioc_header", ".startup", "code", "data", "text", "strsect"
+                },
+                new List<string>() {
+                    "bss"
+                },
+                new List<string>() {
+                    "___gfx_palette_segment"
+                },
+                new List<string>() {
+                    "___gfx_vram_segment"
+                },
+            };
 
             linker.LinkTest();
 

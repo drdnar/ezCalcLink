@@ -847,7 +847,7 @@ namespace EzCalcLink.Object
                     else if (NextRecordIdIs(0xC3C4))
                     {
                         DebugLogger.LogLine("Normal data (CD)");
-                        s.Relocatable = false;
+                        s.Relocatable = true;
                     }
                     /*else if (NextRecordIdIs(0xC5C1D0)) DebugLogger.LogLine("Common absolute code (EAP)");
                     else if (NextRecordIdIs(0xC5C1D2)) DebugLogger.LogLine("Common absolute ROM data (EAR)");
