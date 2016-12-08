@@ -113,8 +113,10 @@ namespace EzCalcLink.Linker
         PopulateSectionsList();
         Have the input parser generate the sections order lists
         OrderSectionsList();
-            Note: You don't know the size of the sections until you know the
-            optional libraries to include.  
+        // Finalize section locations
+        // Update relocation indexes
+        // Update symbol definitions
+        // Collate section
         CrossReferenceExternalSymbols();
         ResolveSymbolAddresses();
         ResolveStaticRelocations();
@@ -141,7 +143,7 @@ namespace EzCalcLink.Linker
                     DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "  Address space: {3}, Section: {4}, Symbol name: {0}, Offset: {1:X6}, Resolved: {2}", s.Name, s.Offset, s.Resolved, s.AddressSpace.Name, s.Section.Name);
                 }
             }*/
-            OrderSectionsList();
+            CollateSections();/*
             foreach (var s in Sections)
             {
                 DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "Output section {0}:", s.Name);
@@ -153,7 +155,7 @@ namespace EzCalcLink.Linker
                 
 
 
-            }
+            }*/
         }
 
 
@@ -250,15 +252,20 @@ namespace EzCalcLink.Linker
         {
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Populating sections list. . . .");
             // Build master list of sections
+            DebugLogger.Indent();
             foreach (var o in ObjectFiles)
             {
                 DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, "Scanning sections in object {0}. . . .", o.ModuleName);
+                DebugLogger.Indent();
                 foreach (var s in o.Sections)
                 {
                     Section t; // t -> (comes after S)
                     if (!Sections.TryGet(s.Name, out t))
                     {
-                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, " New section: {0}", s.Name);
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, "New section: {0}", s.Name);
+                        DebugLogger.Indent();
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "Initial size: 0x{0:X6}", s.ExpectedSize);
+                        DebugLogger.Unindent();
                         // If the section does not already exist in the output
                         // object, then create it.
                         var n = new Section(); // n -> New (section)
@@ -274,51 +281,105 @@ namespace EzCalcLink.Linker
                     }
                     else
                     {
-                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, " Section {0} already exists", s.Name);
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "Section {0} already exists", s.Name);
                         // The section already exists, so expand it.
                         // Figure out if we need to increase the section size
                         if (s.SharedAbsolute) // No data to work with
                             continue;
                         t.ExpectedSize += s.ExpectedSize;
+                        DebugLogger.Indent();
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "Added 0x{1:X6}, New size: 0x{0:X6}", t.ExpectedSize, s.ExpectedSize);
+                        DebugLogger.Unindent();
                     }
                 }
+                DebugLogger.Unindent();
             }
+            DebugLogger.Unindent();
         }
 
 
         /// <summary>
         /// Takes the SectionOrders list and finds the final offsets of the sections.
         /// </summary>
-        protected void OrderSectionsList()
+        protected void CollateSections()
         {
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Ordering sections. . . .");
 
+            // Transform list containing section names into list containing section objects
             foreach (var ss in SectionOrders) // ss -> Sections list, Strings
             {
                 var so = new List<Section>(); // so -> Section list, Objects
                 SectionObjectOrders.Add(so);
                 foreach (var sss in ss) // sss -> SubSections list, Strings
                 {                       // I have had it with these mother****ing snakes on this mother****ing iterator! -- Samuel L. Jackson, on EzCalcLink
-                    so.Add(Sections[sss.ToUpper()]);
+                    so.Add(Sections[sss]);
                 }
             }
 
-            // TODO: Combine sections from different input objects.
-            // Combine sections that need to be combined serially.
+            // Compute relative final addresses for output sections.
+            DebugLogger.Indent();
             foreach (var sl in SectionObjectOrders) // sl -> Section List
             {
                 if (sl.Count == 0)
                     continue;
 
-                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "  Section:");
-
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "Section series:");
+                DebugLogger.Indent();
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "{0} has address 0x{1:X6} and size 0x{2:x6}", sl[0].Name, sl[0].BaseAddress, sl[0].ExpectedSize);
                 for (int i = 1; i < sl.Count; i++)
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "    {0}", sl[i].Name);
                     sl[i].BaseAddress = sl[i - 1].BaseAddress + sl[i - 1].ExpectedSize;
                     //sl[i].Resolved = true;
+                    DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "{0} has address 0x{1:X6} and size 0x{2:x6}", sl[i].Name, sl[i].BaseAddress, sl[i].ExpectedSize);
                 }
+                DebugLogger.Unindent();
             }
+            DebugLogger.Unindent();
+
+
+            Console.ReadKey();
+
+            // Collate sections (phase 1)
+            // Here, we're giving the INPUT sections new base addresses.
+            // However, these aren't final addresses.  All we're doing is giving
+            // them addresses relative to other input sections with the same
+            // name.
+            DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Basic, "Collating. . . .");
+            DebugLogger.Indent();
+            // Map names of sections to current address we're adding data to.
+            Dictionary <string, int> nextSectionAddress = new Dictionary<string, int>();
+            foreach (var sect in Sections)
+                nextSectionAddress[sect.Name] = sect.BaseAddress;
+            // Process sections
+            foreach (var obj in ObjectFiles)
+            {
+                DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.Verbose, "Object file {0}", obj.Name);
+                DebugLogger.Indent();
+                foreach (var sect in obj.Sections)
+                {
+                    DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "Section {0}", sect.Name);
+                    // TODO: Treat SharedAbsolute sections differently
+                    if (sect.SharedAbsolute)
+                        continue;
+                    
+                    // Pin address
+                    var oSect = Sections[sect.Name.ToUpper()];
+                    sect.ChangeBaseAddress(nextSectionAddress[sect.Name.ToUpper()]);
+                    // Copy data
+                    // TODO: Handle BSS-type stuff specially
+                    if (sect.Data.Count > 0)
+                        for (int i = sect.BaseAddress; i < sect.BaseAddress + sect.ExpectedSize; i++)
+                            oSect.SetByte(i, sect.Memory[i]);
+                    // Copy relocations
+
+                    // Copy symbol definitions
+                }
+                DebugLogger.Unindent();
+            }
+            DebugLogger.Unindent();
+
+            // Collate sections (phase 2)
+
         }
 
 

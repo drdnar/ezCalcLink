@@ -51,10 +51,24 @@ namespace EzCalcLink.Object
         /// </summary>
         public bool SharedAbsolute = false;
 
+
         /// <summary>
-        /// Contains a list of all relocations found in the file
+        /// Contains a list of all relocations found in the section.
+        /// The int is the logical address of the relocation.  This starts as
+        /// an index into the section's data (based from 0), but then gets
+        /// transformed into an address, along with the variable addresses
+        /// and section data.
         /// </summary>
         public Dictionary<int, RelocationExpression> Relocations = new Dictionary<int, RelocationExpression>();
+
+
+        public void ChangeBaseAddress(int newAddress)
+        {
+            if (Data.Count > 0)
+                Memory.ChangeStartAddress(newAddress);
+            BaseAddress = newAddress;
+        }
+
 
         /// <summary>
         /// For a statically linked object file, returns the final address this

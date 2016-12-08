@@ -17,7 +17,27 @@ namespace EzCalcLink.Linker
         private Dictionary<string, T> SymbolsByName = new Dictionary<string, T>();
         private Dictionary<string, bool> SymbolReferenced = new Dictionary<string, bool>();
 
-        
+        public NameResolver(bool caseSensitive = true)
+        {
+            _CaseSensitive = caseSensitive;
+        }
+
+        private bool _CaseSensitive = true;
+        /// <summary>
+        /// If true, symbols resolved by name should be case-sensitive.
+        /// </summary>
+        public bool CaseSensitive
+        {
+            get
+            {
+                return _CaseSensitive;
+            }
+            set
+            {
+                _CaseSensitive = value;
+            }
+        }
+
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return this.GetEnumerator();
@@ -58,7 +78,10 @@ namespace EzCalcLink.Linker
 
         public bool Contains(T t)
         {
-            return SymbolsByName.ContainsKey(t.Name);
+            if (!_CaseSensitive)
+                return SymbolsByName.ContainsKey(t.Name.ToUpper());
+            else
+                return SymbolsByName.ContainsKey(t.Name);
         }
 
 
@@ -83,8 +106,11 @@ namespace EzCalcLink.Linker
         public void Add(T t)
         {
             Symbols.Add(t);
-            SymbolsByName.Add(t.Name, t);
-            SymbolReferenced.Add(t.Name, false);
+            string s = t.Name;
+            if (!_CaseSensitive)
+                s = s.ToUpper();
+            SymbolsByName.Add(s, t);
+            SymbolReferenced.Add(s, false);
         }
 
 
@@ -92,7 +118,7 @@ namespace EzCalcLink.Linker
         {
             get
             {
-                return SymbolsByName[name];
+                return Get(name);
             }
         }
 
@@ -104,6 +130,8 @@ namespace EzCalcLink.Linker
         /// <returns></returns>
         public T Get(string name)
         {
+            if (!_CaseSensitive)
+                name = name.ToUpper();
             return SymbolsByName[name];
         }
 
@@ -117,6 +145,8 @@ namespace EzCalcLink.Linker
         public T GetNullable(string name)
         {
             T temp;
+            if (!_CaseSensitive)
+                name = name.ToUpper();
             if (SymbolsByName.TryGetValue(name, out temp))
                 return temp;
             else
@@ -132,6 +162,8 @@ namespace EzCalcLink.Linker
         /// <returns>Returns true if the lookup succeeds.</returns>
         public bool TryGet(string name, out T outValue)
         {
+            if (!_CaseSensitive)
+                name = name.ToUpper();
             return SymbolsByName.TryGetValue(name, out outValue);
         }
 

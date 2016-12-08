@@ -28,6 +28,17 @@ namespace EzCalcLink
 
 
         /// <summary>
+        /// Changes the address this ContiguousMemory's data is considered to
+        /// start at, effectively moving it.
+        /// </summary>
+        /// <param name="newStart"></param>
+        public void ChangeStartAddress(int newStart)
+        {
+            startAddress = newStart - firstValidIndex;
+        }
+
+
+        /// <summary>
         /// Returns the first address with valid data in this ContiguousMemory
         /// </summary>
         public int StartAddress

@@ -25,12 +25,12 @@ namespace EzCalcLink.Object
         /// <summary>
         /// Lists different types of address spaces
         /// </summary>
-        public NameResolver<AddressSpace> AddressSpaces = new NameResolver<AddressSpace>();
+        public NameResolver<AddressSpace> AddressSpaces = new NameResolver<AddressSpace>(caseSensitive: false);
 
         /// <summary>
         /// Contains a list of different sections
         /// </summary>
-        public NameResolver<Section> Sections = new NameResolver<Section>();
+        public NameResolver<Section> Sections = new NameResolver<Section>(caseSensitive: false);
 
         /// <summary>
         /// Contains a list of all symbols
@@ -50,6 +50,20 @@ namespace EzCalcLink.Object
         /// </summary>
         public NameResolver<Symbol> ExternalSymbols = new NameResolver<Symbol>();
 
+
+        /// <summary>
+        /// This changes the base address of a section, and updates symbol addresses
+        /// </summary>
+        /// <param name="section"></param>
+        /// <param name="newAddress"></param>
+        public void ChangeSectionBaseAddress(Section section, int newAddress)
+        {
+            int d = newAddress - section.BaseAddress;
+            section.ChangeBaseAddress(newAddress);
+            foreach (var s in LocalSymbols)
+                if (s.Section == section)
+                    s.Offset += d;
+        }
 
         /// <summary>
         /// True if the object file contains relocation information

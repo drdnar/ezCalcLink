@@ -180,19 +180,19 @@ namespace EzCalcLink.Object
         protected void InitExprs()
         {
             // Initialize some global thingies.
-            RExpClassA1 = new RelocationExpression();
+            RExpClassA1 = new RelocationExpression(null); // This is a terrible idea. Don't do this.
             RExpClassA1.AddNumber(0xFF); RExpClassA1.AddAnd(); RExpClassA1.AddNumber(0x8); RExpClassA1.AddEndExpression();
-            RExpClassA2 = new RelocationExpression();
+            RExpClassA2 = new RelocationExpression(null);
             RExpClassA2.AddNumber(0x8); RExpClassA2.AddRightShift(); RExpClassA2.AddNumber(0xFF); RExpClassA2.AddAnd(); RExpClassA2.AddNumber(0x8); RExpClassA2.AddEndExpression();
-            RExpClassA3 = new RelocationExpression();
+            RExpClassA3 = new RelocationExpression(null);
             RExpClassA3.AddNumber(0x10); RExpClassA3.AddRightShift(); RExpClassA3.AddNumber(0x8); RExpClassA3.AddEndExpression();
-            RExpClassA3b = new RelocationExpression();
+            RExpClassA3b = new RelocationExpression(null);
             RExpClassA3b.AddNumber(0x10); RExpClassA3b.AddRightShift(); RExpClassA3b.AddNumber(0xFF); RExpClassA3b.AddAnd(); RExpClassA3b.AddNumber(0x8); RExpClassA3b.AddEndExpression();
-            RExpClassB1 = new RelocationExpression();
+            RExpClassB1 = new RelocationExpression(null);
             RExpClassB1.AddNumber(0xFF); RExpClassB1.AddAnd(); RExpClassB1.AddNumber(0x10); RExpClassB1.AddLeftShift();
-            RExpClassB2 = new RelocationExpression();
+            RExpClassB2 = new RelocationExpression(null);
             RExpClassB2.AddNumber(0x10); RExpClassB2.AddRightShift(); RExpClassB2.AddNumber(0xFF); RExpClassB2.AddAnd(); RExpClassB2.AddAdd();
-            RExpClassB3 = new RelocationExpression();
+            RExpClassB3 = new RelocationExpression(null);
             RExpClassB3.AddNumber(0xFF00); RExpClassB3.AddAnd(); RExpClassB3.AddAdd(); RExpClassB3.AddNumber(0x18); RExpClassB3.AddEndExpression();
         }
 
@@ -559,7 +559,7 @@ namespace EzCalcLink.Object
                         break;
                     case 0xBE: // Open C
                         index++;
-                        exps.Add(new RelocationExpression());
+                        exps.Add(new RelocationExpression(Obj));
                         exps.Last().ObjectFile = Obj;
                         expCount++;
                         nestLevel++;
@@ -632,14 +632,14 @@ namespace EzCalcLink.Object
                 int i = MatchRelocationExpression(RExpClassB1, e);
                 if (i == -1)
                     ShowFatalError("Error parsing relocation: Could not match expression to standard type (B1)");
-                exps.Add(new RelocationExpression());
+                exps.Add(new RelocationExpression(Obj));
                 for (int j = i + RExpClassB1.Expression.Count; j < e.Expression.Count; j++)
                     exps[1].Expression.Add(e.Expression[j]);
                 e.Expression.RemoveRange(i, e.Expression.Count - i);
                 i = MatchRelocationExpression(RExpClassB2, exps[1]);
                 if (i == -1)
                     ShowFatalError("Error parsing relocation: Could not match expression to standard type (B2)");
-                exps.Add(new RelocationExpression());
+                exps.Add(new RelocationExpression(Obj));
                 for (int j = i + RExpClassB2.Expression.Count; j < exps[1].Expression.Count; j++)
                     exps[2].Expression.Add(exps[1].Expression[j]);
                 exps[1].Expression.RemoveRange(i, exps[1].Expression.Count - i);
@@ -654,7 +654,7 @@ namespace EzCalcLink.Object
             }
             else
                 ShowFatalError("Error parsing relocation: Could not match expression to standard type at all.");
-            return new RelocationExpression();
+            return new RelocationExpression(Obj);
         }
 
 
@@ -841,6 +841,7 @@ namespace EzCalcLink.Object
                     {
                         DebugLogger.LogLine("Absolute data (ASD)");
                         s.Relocatable = false;
+                        s.SharedAbsolute = true;
                     }
                     /*else if (NextRecordIdIs(0xC3D0)) DebugLogger.LogLine("Normal code (CP)");
                     else if (NextRecordIdIs(0xC3D2)) DebugLogger.LogLine("Normal ROM data (CR)");*/

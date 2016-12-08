@@ -26,6 +26,28 @@ namespace EzCalcLink.Object
         }
 
 
+        public RelocationExpression(ObjectFile master)
+        {
+            ObjectFile = master;
+        }
+
+
+        /// <summary>
+        /// Returns a clone of this RelocationExpression, but attached to a different ObjectFile.
+        /// </summary>
+        /// <param name="newMaster"></param>
+        /// <returns></returns>
+        public RelocationExpression CloneFor(ObjectFile newMaster)
+        {
+            RelocationExpression e = new RelocationExpression(newMaster);
+            e.ReturnedByes = ReturnedByes;
+            e.ReturnedBytesExpected = ReturnedBytesExpected;
+            for (int i = 0; i < Expression.Count; i++)
+                e.Expression[i] = Expression[i].CloneFor(newMaster);
+            return e;
+        }
+
+        
         /// <summary>
         /// Used for RPN expression parsing
         /// </summary>
@@ -222,11 +244,19 @@ namespace EzCalcLink.Object
             {
                 return !(a == b);
             }
+
+            public abstract Element CloneFor(ObjectFile master);
         }
 
         protected abstract class Function : Element
         {
+            // Many functions are singletons, so they need a reference to the expression being parsed to do their thing.
             internal abstract void Evaluate(RelocationExpression e);
+
+            public override Element CloneFor(ObjectFile master)
+            {
+                return this;
+            }
         }
 
 
@@ -246,6 +276,11 @@ namespace EzCalcLink.Object
             {
                 return "0x" + Value.ToString("X");
             }
+
+            public override Element CloneFor(ObjectFile master)
+            {
+                return new NumberElement(Value);
+            }
         }
 
 
@@ -263,20 +298,60 @@ namespace EzCalcLink.Object
         }
 
 
-        protected class GetSectionAddressFunction : Function
+        protected abstract class SpecialFunction : Function
         {
+            internal ObjectFile master;
+
+            public SpecialFunction(ObjectFile master)
+            {
+                this.master = master;
+            }
+        }
+
+
+        /// <summary>
+        /// This represents a reference to a section address.
+        /// </summary>
+        protected class GetSectionAddressFunction : SpecialFunction
+        {
+            /// <summary>
+            /// Contains the name of the section
+            /// </summary>
+            internal string sectionName;
+            /// <summary>
+            /// The sectionName is resolved into a reference to a Section object during linking.
+            /// </summary>
             internal Section section;
+
+            public GetSectionAddressFunction(ObjectFile master, Section s) : base(master)
+            {
+                sectionName = s.Name;
+            }
+
+            protected GetSectionAddressFunction(ObjectFile master, string s) : base(master)
+            {
+                sectionName = s;
+            }
 
             internal override void Evaluate(RelocationExpression e)
             {
-                if (!section.Resolved)
-                    throw new RelocationParseException(string.Format("Tried to get final address of section {0}, whose final address has not been resolved.", section.Name));
+                if (section == null)
+                    if (master.Sections.TryGet(sectionName, out section))
+                        if (!section.Resolved)
+                            throw new RelocationParseException($"Tried to get final address of section {sectionName}, whose final address has not been resolved.");
+                    else
+                        throw new RelocationParseException($"Could not resolve section name {sectionName} because no such section is in the containing ObjectFile.");
                 e.Stack.Push(section.BaseAddress);
+            }
+
+            public override Element CloneFor(ObjectFile master)
+            {
+                return new GetSectionAddressFunction(master, sectionName);
             }
 
             public override string ToString()
             {
-                return "R(" + section.Name + ")";
+                return $"R({sectionName})";
             }
         }
 
@@ -288,9 +363,7 @@ namespace EzCalcLink.Object
         /// <returns></returns>
         public Element GetSectionAddress(Section s)
         {
-            GetSectionAddressFunction f = new GetSectionAddressFunction();
-            f.section = s;
-            return f;
+            return new GetSectionAddressFunction(ObjectFile, s);
         }
 
 
@@ -307,20 +380,40 @@ namespace EzCalcLink.Object
         }
 
 
-        protected class GetSymbolAddressFunction : Function
+        protected class GetSymbolAddressFunction : SpecialFunction
         {
+            internal string symbolName;
             internal Symbol symbol;
+
+            public GetSymbolAddressFunction(ObjectFile master, Symbol s) : base(master)
+            {
+                symbolName = s.Name;
+            }
+
+            protected GetSymbolAddressFunction(ObjectFile master, string s) : base(master)
+            {
+                symbolName = s;
+            }
 
             internal override void Evaluate(RelocationExpression e)
             {
-                if (!symbol.Resolved)
-                    throw new RelocationParseException(string.Format("Tried to get final address of symbol {0}, whose final address has not been resolved.", symbol.Name));
+                if (symbol == null)
+                    if (master.Symbols.TryGet(symbolName, out symbol))
+                        if (!symbol.Resolved)
+                            throw new RelocationParseException($"Tried to get final address of symbol {symbolName}, whose final address has not been resolved.");
+                        else
+                            throw new RelocationParseException($"Could not resolve symbol name {symbolName} because no such symbol is in the containing ObjectFile.");
                 e.Stack.Push(symbol.Offset);
+            }
+
+            public override Element CloneFor(ObjectFile master)
+            {
+                return new GetSymbolAddressFunction(master, symbolName);
             }
 
             public override string ToString()
             {
-                return "X(" + symbol.Name + ")";
+                return $"X({symbolName})";
             }
         }
 
@@ -332,9 +425,7 @@ namespace EzCalcLink.Object
         /// <returns></returns>
         public Element GetSymbolAddress(Symbol s)
         {
-            GetSymbolAddressFunction f = new GetSymbolAddressFunction();
-            f.symbol = s;
-            return f;
+            return new GetSymbolAddressFunction(ObjectFile, s);
         }
 
 
