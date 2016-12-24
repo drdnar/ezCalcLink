@@ -11,6 +11,20 @@ namespace EzCalcLink.Object
     /// </summary>
     public class Symbol : INamed
     {
+        public Symbol CloneFor(ObjectFile newMaster)
+        {
+            Symbol s = new Symbol();
+            s.Name = Name;
+            if (AddressSpace != null)
+                s.AddressSpace = newMaster.AddressSpaces[AddressSpace.Name];
+            s.Offset = Offset;
+            s.ObjectFile = newMaster;
+            s.External = External;
+            if (Section != null)
+                s.Section = newMaster.Sections[Section.Name];
+            return s;
+        }
+
         private string _Name;
         /// <summary>
         /// The symbol's name, used to resolve references

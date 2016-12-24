@@ -156,6 +156,10 @@ namespace EzCalcLink.Linker
 
 
             }*/
+            // PinFinalAddresses();
+            // WriteRelocations();
+            // FormatOutputBinary();
+            // WriteOutputFile();
         }
 
 
@@ -300,6 +304,7 @@ namespace EzCalcLink.Linker
 
         /// <summary>
         /// Takes the SectionOrders list and finds the final offsets of the sections.
+        /// TODO: This should probably be split into submethods.
         /// </summary>
         protected void CollateSections()
         {
@@ -357,29 +362,47 @@ namespace EzCalcLink.Linker
                 DebugLogger.Indent();
                 foreach (var sect in obj.Sections)
                 {
-                    DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "Section {0}", sect.Name);
+                    if (!obj.IsLibraryMember)
+                        DebugLogger.Log(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVerbose, "Section {0}", sect.Name);
                     // TODO: Treat SharedAbsolute sections differently
                     if (sect.SharedAbsolute)
+                    {
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, " SharedAbsolute");
                         continue;
-                    
+                    }
                     // Pin address
-                    var oSect = Sections[sect.Name.ToUpper()];
-                    sect.ChangeBaseAddress(nextSectionAddress[sect.Name.ToUpper()]);
+                    var sectName = sect.Name.ToUpper();
+                    var oSect = Sections[sectName];
+                    var newAddr = nextSectionAddress[sectName];
+                    if (!obj.IsLibraryMember)
+                        DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, " New address: 0x{0:X6}", newAddr);
+                    obj.ChangeSectionBaseAddress(sect, newAddr);
                     // Copy data
-                    // TODO: Handle BSS-type stuff specially
                     if (sect.Data.Count > 0)
                         for (int i = sect.BaseAddress; i < sect.BaseAddress + sect.ExpectedSize; i++)
                             oSect.SetByte(i, sect.Memory[i]);
                     // Copy relocations
-
-                    // Copy symbol definitions
+                    foreach (var r in sect.Relocations)
+                    {
+                        var newReloc = r.Value.CloneFor(OutputObject);
+                        oSect.Relocations.Add(r.Key, newReloc);
+                    }
+                    // Update location of next part of section
+                    nextSectionAddress[sectName] = newAddr + sect.ExpectedSize;
                 }
+                // Copy symbol definitions
+                foreach (var s in obj.Symbols)
+                    if (!s.External)
+                        OutputObject.Symbols.Add(s.CloneFor(OutputObject));
                 DebugLogger.Unindent();
             }
             DebugLogger.Unindent();
 
             // Collate sections (phase 2)
-
+            // Now we:
+            //     Combine section data for serial sections into one section
+            //     Combine relocations lists
+            //     Combine symbol lists, and translate symbol offsets
         }
 
 

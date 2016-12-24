@@ -62,8 +62,19 @@ namespace EzCalcLink.Object
         public Dictionary<int, RelocationExpression> Relocations = new Dictionary<int, RelocationExpression>();
 
 
+        /// <summary>
+        /// Updates the base address of this Section's Memory, and updates
+        /// the index of relocations, BUT DOES NOT UPDATE THE CONTENTS OF
+        /// RELOCATION EXPRESSIONS.
+        /// </summary>
+        /// <param name="newAddress"></param>
         public void ChangeBaseAddress(int newAddress)
         {
+            int delta = newAddress - BaseAddress;
+            Dictionary<int, RelocationExpression> newRelocations = new Dictionary<int, RelocationExpression>();
+            foreach (var r in Relocations)
+                newRelocations.Add(r.Key + delta, r.Value);
+            Relocations = newRelocations;
             if (Data.Count > 0)
                 Memory.ChangeStartAddress(newAddress);
             BaseAddress = newAddress;

@@ -52,7 +52,8 @@ namespace EzCalcLink.Object
 
 
         /// <summary>
-        /// This changes the base address of a section, and updates symbol addresses
+        /// This changes the base address of a section, updates relocations,
+        /// and updates symbol addresses
         /// </summary>
         /// <param name="section"></param>
         /// <param name="newAddress"></param>
@@ -60,6 +61,21 @@ namespace EzCalcLink.Object
         {
             int d = newAddress - section.BaseAddress;
             section.ChangeBaseAddress(newAddress);
+            // Scan list of relocations and update
+            foreach (var s in Sections)
+            {
+                if (!s.Relocatable)
+                    continue;
+                Dictionary<int, RelocationExpression> newRelocations = new Dictionary<int, RelocationExpression>();
+                foreach (var r in s.Relocations)
+                {
+                    var oldAddr = r.Key;
+                    var reloc = r.Value;
+                    newRelocations.Add(oldAddr + d, reloc);
+                }
+                section.Relocations = newRelocations;
+            }
+            // Scan list of symbols and update
             foreach (var s in LocalSymbols)
                 if (s.Section == section)
                     s.Offset += d;
