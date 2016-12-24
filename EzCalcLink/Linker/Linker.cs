@@ -143,7 +143,10 @@ namespace EzCalcLink.Linker
                     DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "  Address space: {3}, Section: {4}, Symbol name: {0}, Offset: {1:X6}, Resolved: {2}", s.Name, s.Offset, s.Resolved, s.AddressSpace.Name, s.Section.Name);
                 }
             }*/
-            CollateSections();/*
+            OrderSections();
+            CollateSubsections();
+            CollateSections();
+            /*
             foreach (var s in Sections)
             {
                 DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase | DebugLogger.LogType.VeryVeryVerbose, "Output section {0}:", s.Name);
@@ -302,11 +305,7 @@ namespace EzCalcLink.Linker
         }
 
 
-        /// <summary>
-        /// Takes the SectionOrders list and finds the final offsets of the sections.
-        /// TODO: This should probably be split into submethods.
-        /// </summary>
-        protected void CollateSections()
+        protected void OrderSections()
         {
             DebugLogger.LogLine(DebugLogger.LogType.LinkerPhase, "Ordering sections. . . .");
 
@@ -340,10 +339,14 @@ namespace EzCalcLink.Linker
                 DebugLogger.Unindent();
             }
             DebugLogger.Unindent();
+        }
 
 
-            Console.ReadKey();
-
+        /// <summary>
+        /// This combines same-name sections from individual files into a single section in the output ObjectFile.
+        /// </summary>
+        protected void CollateSubsections()
+        {
             // Collate sections (phase 1)
             // Here, we're giving the INPUT sections new base addresses.
             // However, these aren't final addresses.  All we're doing is giving
@@ -397,12 +400,20 @@ namespace EzCalcLink.Linker
                 DebugLogger.Unindent();
             }
             DebugLogger.Unindent();
+        }
 
+
+        /// <summary>
+        /// This combines serial sections in the output ObjectFile into a single section.
+        /// </summary>
+        protected void CollateSections()
+        {
             // Collate sections (phase 2)
             // Now we:
             //     Combine section data for serial sections into one section
             //     Combine relocations lists
             //     Combine symbol lists, and translate symbol offsets
+
         }
 
 
